@@ -59,9 +59,7 @@ async function loadSavedWallet(): Promise<string | undefined> {
     console.error(`[ALOE] ✗ CRITICAL: Wallet file exists but has invalid format!`);
     console.error(`[ALOE]   File: ${WALLET_FILE}`);
     console.error(`[ALOE]   Expected: 0x followed by 64 hex characters (66 chars total)`);
-    console.error(
-      `[ALOE]   To fix: restore your backup key or set BLOCKRUN_WALLET_KEY env var`,
-    );
+    console.error(`[ALOE]   To fix: restore your backup key or set BLOCKRUN_WALLET_KEY env var`);
     throw new Error(
       `Wallet file at ${WALLET_FILE} is corrupted or has wrong format. ` +
         `Refusing to auto-generate new wallet to protect existing funds. ` +

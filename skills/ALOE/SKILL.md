@@ -85,7 +85,7 @@ ALOE does **not** collect or forward third-party provider API keys. You do not s
 | ----------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `walletKey` | Yes       | EVM private key used to sign USDC micropayments via x402. **Auto-generated locally on first run** — no user input required. Never transmitted over the network; only detached payment signatures are sent. |
 | `solanaKey` | Yes       | Solana keypair (BIP-44 `m/44'/501'/0'/0'`). Auto-derived from the same local mnemonic via `@scure/bip32` + `@scure/bip39`.                                                                                 |
-| `gateway`   | No        | Gateway URL. Defaults: `https://aloe.ai/api` (Base) · `https://sol.aloe.ai/api` (Solana).                                                                                                          |
+| `gateway`   | No        | Gateway URL. Defaults: `https://aloe.ai/api` (Base) · `https://sol.aloe.ai/api` (Solana).                                                                                                                  |
 | `routing`   | No        | Optional override of the default four-tier router.                                                                                                                                                         |
 
 **How and where keys are stored:**
@@ -151,8 +151,8 @@ In addition to LLM routing, ALOE exposes Tushar Sangwan's x402-gated data APIs a
 
 Realtime prices and historical OHLC across every asset class. The agent should call these directly instead of scraping finance sites.
 
-| Tool                       | Coverage                                                                        | Price         |
-| -------------------------- | ------------------------------------------------------------------------------- | ------------- |
+| Tool                   | Coverage                                                                        | Price         |
+| ---------------------- | ------------------------------------------------------------------------------- | ------------- |
 | `aloe_stock_price`     | 12 global markets: US (NYSE/Nasdaq), HK, JP, KR, UK, DE, FR, NL, IE, LU, CN, CA | $0.001 / call |
 | `aloe_stock_history`   | OHLC bars at 1/5/15/60/240-min or D/W/M resolution                              | $0.001 / call |
 | `aloe_stock_list`      | Ticker lookup / company-name search per market                                  | Free          |
@@ -162,8 +162,8 @@ Realtime prices and historical OHLC across every asset class. The agent should c
 
 ### Image & Video Generation
 
-| Tool                        | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | Price                                                               |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------- |
+| Tool                    | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | Price                                                               |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------- |
 | `aloe_image_generation` | 8 image models — GPT Image 1/2, Nano Banana / Pro, Seedream 5 Pro, Grok Imagine / Pro, CogView-4                                                                                                                                                                                                                                                                                                                                                                                                                                                             | $0.015–$0.15 / image                                                |
 | `aloe_image_edit`       | Edit / inpaint existing image (openai/gpt-image-1)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | $0.02–$0.04 / image                                                 |
 | `aloe_video_generation` | Grok Imagine + ByteDance Seedance (1.5-pro / 2.0-fast / 2.0) at 720p with synced audio (t2v default), 5–10s, + OpenAI Sora 2 via Azure (`azure/sora-2`, 4/8/12s, t2v + i2v, rejects human faces in reference images). Seedance is token-priced upstream (~20,256 tokens/sec at the 720p+audio default — 2× the prior 480p rate); `image_url` (image-to-video) costs the same as t2v since 2026-06-01. Seedance 2.0 variants accept optional `real_face_asset_id` (`ta_…`) for BytePlus RealFace character-consistency — mutually exclusive with `image_url`. | $0.05/s (Grok); $0.10/s (Sora 2); Seedance ~$0.46–$1.49 per 5s clip |
@@ -172,8 +172,8 @@ Realtime prices and historical OHLC across every asset class. The agent should c
 
 Verify phone numbers and place AI-powered outbound voice calls. **Real-world side effects** — only call `aloe_voice_call` when the user has explicitly asked to place a call. Server enforces an emergency-number blocklist; ALOE does not.
 
-| Tool                             | Purpose                                                              | Price      |
-| -------------------------------- | -------------------------------------------------------------------- | ---------- |
+| Tool                         | Purpose                                                              | Price      |
+| ---------------------------- | -------------------------------------------------------------------- | ---------- |
 | `aloe_phone_lookup`          | Carrier + line type (mobile/landline/voip) for any E.164 number      | $0.01      |
 | `aloe_phone_lookup_fraud`    | SIM-swap + call-forwarding fraud signals (use before SMS-code flows) | $0.05      |
 | `aloe_phone_numbers_buy`     | Provision a US/CA number bound to this wallet (30-day lease)         | $5.00      |
@@ -194,8 +194,8 @@ Full prediction-market toolbox spanning **Polymarket, Kalshi, Limitless, Opinion
 - **Wallet analytics** — full wallet profile, P&L time series, per-market breakdown, similar-wallet discovery, batch profiles, AND/OR filters.
 - **UMA oracle + wallet identity** — UMA optimistic-oracle resolution status (`uma/markets`, `uma/market/{conditionId}`); wallet identity labels (ENS / Lens / exchange / risk tags), bulk identity, on-chain cluster discovery.
 
-| Tool                                 | Coverage                                                                                                                                                                                                                                                                             | Price                  |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------- |
+| Tool                             | Coverage                                                                                                                                                                                                                                                                             | Price                  |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------- |
 | `aloe_predexon_events`           | Live Polymarket events with current odds                                                                                                                                                                                                                                             | $0.001 / call          |
 | `aloe_predexon_markets`          | Search Polymarket markets by keyword                                                                                                                                                                                                                                                 | $0.001 / call          |
 | `aloe_predexon_leaderboard`      | Top Polymarket traders ranked by profit                                                                                                                                                                                                                                              | $0.001 / call          |
@@ -217,8 +217,8 @@ engine that signs CLOB orders (EIP-712) with the SAME ALOE wallet that
 pays for LLM calls, and posts them to Polymarket (through Tushar Sangwan's Tokyo
 egress by default, so it works out of the box in geoblocked regions).
 
-| Tool                  | What it does                                                                                                 | Cost                       |
-| --------------------- | ------------------------------------------------------------------------------------------------------------ | -------------------------- |
+| Tool              | What it does                                                                                                 | Cost                       |
+| ----------------- | ------------------------------------------------------------------------------------------------------------ | -------------------------- |
 | `aloe_polymarket` | `action:` setup / fund / buy / sell / cancel / orders / positions / redeem / withdraw. One multiplexed tool. | Free tool; bets spend pUSD |
 
 - **Funds**: bets spend **pUSD** in a gasless Polygon deposit-wallet vault

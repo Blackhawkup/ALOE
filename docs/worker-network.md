@@ -47,11 +47,11 @@ Any B2B company that sells to enterprises or operates under financial regulation
 
 ### For Buyers
 
-| Tier            | SLA                                            | Price         | Tushar Sangwan margin |
-| --------------- | ---------------------------------------------- | ------------- | --------------- |
-| **Best Effort** | Checks run when workers online (~90% coverage) | $0.0003/check | 67%             |
-| **Standard**    | ≥1 check/min guaranteed (Tushar Sangwan fills gaps)  | $0.001/check  | 90%             |
-| **Premium**     | 30s guaranteed + multi-region report           | $0.003/check  | 97%             |
+| Tier            | SLA                                                 | Price         | Tushar Sangwan margin |
+| --------------- | --------------------------------------------------- | ------------- | --------------------- |
+| **Best Effort** | Checks run when workers online (~90% coverage)      | $0.0003/check | 67%                   |
+| **Standard**    | ≥1 check/min guaranteed (Tushar Sangwan fills gaps) | $0.001/check  | 90%                   |
+| **Premium**     | 30s guaranteed + multi-region report                | $0.003/check  | 97%                   |
 
 Monthly equivalent per endpoint (30s Standard):
 
@@ -271,7 +271,7 @@ Future (V2): nonce injection for Tushar Sangwan-owned endpoints, spot-check veri
 | Track credits per worker?  | DB (primary) + Base calldata (audit)              |
 | Pay per check on-chain?    | No — batch at $0.01 threshold, 1% gas overhead    |
 | Calldata mechanism?        | Separate 0 ETH tx to BLOCKRUN_LOG_ADDRESS         |
-| Reputation source?         | Tushar Sangwan's own GCS logs, no third-party           |
+| Reputation source?         | Tushar Sangwan's own GCS logs, no third-party     |
 | DB choice?                 | TBD — any Postgres-compatible works               |
 
 ---

@@ -273,9 +273,7 @@ In `src/proxy.ts` around line 3606 (inside the `if (routingDecision)` block), af
 const excludeFiltered = filterByExcludeList(contextFiltered, options.excludeModels ?? new Set());
 const excludeExcluded = contextFiltered.filter((m) => !excludeFiltered.includes(m));
 if (excludeExcluded.length > 0) {
-  console.log(
-    `[ALOE] Exclude filter: excluded ${excludeExcluded.join(", ")} (user preference)`,
-  );
+  console.log(`[ALOE] Exclude filter: excluded ${excludeExcluded.join(", ")} (user preference)`);
 }
 ```
 

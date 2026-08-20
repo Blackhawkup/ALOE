@@ -33,8 +33,7 @@ const RUN_FULL_LIVE_TESTS = RUN_PAID_TESTS && process.env.ALOE_E2E_FULL === "1";
 const RUN_IMAGE_TEST = RUN_PAID_TESTS && process.env.RUN_IMAGE_TEST === "1";
 const RUN_MUSIC_TEST = RUN_PAID_TESTS && process.env.RUN_MUSIC_TEST === "1";
 const REQUEST_TIMEOUT_MS = Number(process.env.ALOE_E2E_TIMEOUT_MS ?? 30_000);
-const TEST_HOME =
-  process.env.ALOE_E2E_HOME ?? join(tmpdir(), `aloe-e2e-${process.pid}`);
+const TEST_HOME = process.env.ALOE_E2E_HOME ?? join(tmpdir(), `aloe-e2e-${process.pid}`);
 const CLEAN_TEST_HOME = !process.env.ALOE_E2E_HOME;
 
 process.env.HOME = TEST_HOME;

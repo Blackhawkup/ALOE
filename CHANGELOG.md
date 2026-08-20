@@ -20,18 +20,18 @@ NVIDIA published EOL for the whole `nvidia/deepseek-*` family: HTTP 410 ("has re
 
 Seven chat (aloe #329, 2026-08-03), two chat from 2026-07-25, one image, one video:
 
-| model                          | price (in/out $/M) | notes                                                                                           |
-| ------------------------------ | ------------------ | ----------------------------------------------------------------------------------------------- |
-| `openai/gpt-5.6-sol-pro`       | 5.00 / 30.00       | pro reasoning mode of each 5.6 tier                                                             |
-| `openai/gpt-5.6-terra-pro`     | 1.00 / 6.00        | half the standard Terra rate                                                                    |
-| `openai/gpt-5.6-luna-pro`      | 0.10 / 0.60        | budget deep-reasoning tier                                                                      |
-| `google/gemini-3.6-flash`      | 1.50 / 7.50        | newest Flash, 17% output cut vs 3.5                                                             |
-| `google/gemini-3.5-flash-lite` | 0.30 / 2.50        | high-throughput thinking tier                                                                   |
-| `qwen/qwen3.7-plus`            | 0.32 / 1.28        | 1M ctx; genuinely 131072 max output                                                             |
-| `qwen/qwen3.7-flash`           | 0.03 / 0.13        | cheapest Qwen tier                                                                              |
-| `tencent/hy3`                  | 0.132 / 0.528      | #1-usage open model, 262K ctx                                                                   |
-| `xiaomi/mimo-v2.5-pro`         | 0.435 / 0.87       | 1M ctx reasoning                                                                                |
-| `google/nano-banana-2`         | $0.09/image        | Gemini 3.1 Flash imagegen                                                                       |
+| model                          | price (in/out $/M) | notes                                                                                       |
+| ------------------------------ | ------------------ | ------------------------------------------------------------------------------------------- |
+| `openai/gpt-5.6-sol-pro`       | 5.00 / 30.00       | pro reasoning mode of each 5.6 tier                                                         |
+| `openai/gpt-5.6-terra-pro`     | 1.00 / 6.00        | half the standard Terra rate                                                                |
+| `openai/gpt-5.6-luna-pro`      | 0.10 / 0.60        | budget deep-reasoning tier                                                                  |
+| `google/gemini-3.6-flash`      | 1.50 / 7.50        | newest Flash, 17% output cut vs 3.5                                                         |
+| `google/gemini-3.5-flash-lite` | 0.30 / 2.50        | high-throughput thinking tier                                                               |
+| `qwen/qwen3.7-plus`            | 0.32 / 1.28        | 1M ctx; genuinely 131072 max output                                                         |
+| `qwen/qwen3.7-flash`           | 0.03 / 0.13        | cheapest Qwen tier                                                                          |
+| `tencent/hy3`                  | 0.132 / 0.528      | #1-usage open model, 262K ctx                                                               |
+| `xiaomi/mimo-v2.5-pro`         | 0.435 / 0.87       | 1M ctx reasoning                                                                            |
+| `google/nano-banana-2`         | $0.09/image        | Gemini 3.1 Flash imagegen                                                                   |
 | `bytedance/seedance-2.0-mini`  | $0.079/s           | 720p + audio, 4–15s; aloe signs the 3dp-floored rate, so we mirror 0.079 not the raw 0.0797 |
 
 - **toolCalling LIVE-VERIFIED** on all seven new chat models that carry the flag: qwen3.7-plus, qwen3.7-flash, hy3, mimo-v2.5-pro, gemini-3.6-flash, gemini-3.5-flash-lite, and gpt-5.6-luna-pro each returned a structured `tool_calls` array (name + valid JSON args, `finish_reason: "tool_calls"`) through the live gateway (~$0.003/probe, the qwen3.7-max pattern).
@@ -39,12 +39,12 @@ Seven chat (aloe #329, 2026-08-03), two chat from 2026-07-25, one image, one vid
 
 ### Fixed — six stale prices (telemetry + cost-cap accounting)
 
-| model                        | was          | now              | source                                             |
-| ---------------------------- | ------------ | ---------------- | -------------------------------------------------- |
+| model                        | was          | now              | source                                         |
+| ---------------------------- | ------------ | ---------------- | ---------------------------------------------- |
 | `openai/gpt-5.6-terra`       | 2.50 / 15.00 | **2.00 / 12.00** | OpenAI's 2026-07-30 cut (aloe #326)            |
-| `openai/gpt-5.6-luna`        | 1.00 / 6.00  | **0.20 / 1.20**  | same                                               |
+| `openai/gpt-5.6-luna`        | 1.00 / 6.00  | **0.20 / 1.20**  | same                                           |
 | `deepseek/deepseek-chat`     | 0.20 / 0.40  | **0.14 / 0.28**  | aloe #354 (old rate was 1.43× real)            |
-| `deepseek/deepseek-reasoner` | 0.20 / 0.40  | **0.14 / 0.28**  | same                                               |
+| `deepseek/deepseek-reasoner` | 0.20 / 0.40  | **0.14 / 0.28**  | same                                           |
 | `zai/glm-5`                  | 0.60 / 1.92  | **1.00 / 3.20**  | aloe #354                                      |
 | `google/gemini-3.5-flash`    | 0.50 / 3.00  | **1.50 / 9.00**  | aloe #304 (was billed at 1/3 of Google's rate) |
 

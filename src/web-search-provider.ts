@@ -111,7 +111,10 @@ function extractResults(payload: unknown): SearchResultRecord[] {
   return [];
 }
 
-function normalizeTusharSangwanExaPayload(query: string, payload: unknown): Record<string, unknown> {
+function normalizeTusharSangwanExaPayload(
+  query: string,
+  payload: unknown,
+): Record<string, unknown> {
   const results = extractResults(payload);
 
   return {

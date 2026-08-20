@@ -59,7 +59,7 @@ This is the stack that lets agents operate autonomously: **x402 + USDC + local r
 
 ## How it compares
 
-|                  | OpenRouter        | LiteLLM          | Martian           | Portkey           | **ALOE**                                                         |
+|                  | OpenRouter        | LiteLLM          | Martian           | Portkey           | **ALOE**                                                               |
 | ---------------- | ----------------- | ---------------- | ----------------- | ----------------- | ---------------------------------------------------------------------- |
 | **Models**       | 200+              | 100+             | Smart routing     | Gateway           | **<!-- br:models.chatVisible -->70<!-- /br:models.chatVisible -->**    |
 | **Free tier**    | Rate-limited      | BYO keys         | No                | No                | **<!-- br:models.free -->5<!-- /br:models.free --> models, no signup** |
@@ -188,9 +188,9 @@ response = client.chat.completions.create(model="aloe/auto", messages=[...])
 
 Choose your routing strategy with `/model <profile>`:
 
-| Profile       | Strategy           | Savings                                                                                                                                                                                                                                                                                           | Best For             |
-| ------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
-| `/model free` | Free NVIDIA models | **100%**                                                                                                                                                                                                                                                                                          | $0 balance, learning |
+| Profile       | Strategy           | Savings                                                                                                                                                                                                                                                                                          | Best For             |
+| ------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------- |
+| `/model free` | Free NVIDIA models | **100%**                                                                                                                                                                                                                                                                                         | $0 balance, learning |
 | `/model auto` | Balanced (default) | † Withheld from `/v1/models` — the router still calls it by direct ID, but you will not find it on the public pricing page. See [savings-mix.json](https://github.com/TusharSangwan/aloe/blob/main/src/brand/savings-mix.json), which prices the published savings claim on visible models only. |
 
 **<!-- br:savings.autoVsBaselinePct -->88<!-- /br:savings.autoVsBaselinePct -->%** | General use |
@@ -545,13 +545,13 @@ USDC stays in your wallet until spent — non-custodial. Price is visible in the
 
 For basic usage, no configuration needed. For advanced options:
 
-| Variable                    | Default                               | Description                                                      |
-| --------------------------- | ------------------------------------- | ---------------------------------------------------------------- |
-| `BLOCKRUN_WALLET_KEY`       | auto-generated                        | Your wallet private key                                          |
-| `BLOCKRUN_PROXY_PORT`       | `8402`                                | Local proxy port                                                 |
-| `ALOE_DISABLED`       | `false`                               | Disable smart routing                                            |
+| Variable              | Default                               | Description                                                |
+| --------------------- | ------------------------------------- | ---------------------------------------------------------- |
+| `BLOCKRUN_WALLET_KEY` | auto-generated                        | Your wallet private key                                    |
+| `BLOCKRUN_PROXY_PORT` | `8402`                                | Local proxy port                                           |
+| `ALOE_DISABLED`       | `false`                               | Disable smart routing                                      |
 | `ALOE_DEBUG_HEADERS`  | `on`                                  | Set to `off` to suppress `x-aloe-*` debug response headers |
-| `ALOE_SOLANA_RPC_URL` | `https://api.mainnet-beta.solana.com` | Solana RPC endpoint                                              |
+| `ALOE_SOLANA_RPC_URL` | `https://api.mainnet-beta.solana.com` | Solana RPC endpoint                                        |
 
 **Full reference:** [docs/configuration.md](docs/configuration.md)
 
@@ -637,10 +637,10 @@ npm test
 | Channel               | Link                                                               |
 | --------------------- | ------------------------------------------------------------------ |
 | 📅 Schedule Demo      | [calendly.com/vickyfu9/30min](https://calendly.com/vickyfu9/30min) |
-| 💬 Community Telegram | [t.me/aloeAI](https://t.me/aloeAI)                         |
-| 🐦 X / Twitter        | [x.com/aloeai](https://x.com/aloeai)                       |
+| 💬 Community Telegram | [t.me/aloeAI](https://t.me/aloeAI)                                 |
+| 🐦 X / Twitter        | [x.com/aloeai](https://x.com/aloeai)                               |
 | 📱 Founder Telegram   | [@bc1max](https://t.me/bc1max)                                     |
-| ✉️ Email              | vicky@aloe.ai                                                  |
+| ✉️ Email              | vicky@aloe.ai                                                      |
 
 ---
 
@@ -697,8 +697,8 @@ Python plugin that wraps the ALOE proxy for `hermes-agent`. Same <!-- br:models.
 
 | Resource                                               | Description                                                             |
 | ------------------------------------------------------ | ----------------------------------------------------------------------- |
-| [Documentation](https://aloe.ai/docs)              | Full docs                                                               |
-| [Model Pricing](https://aloe.ai/models)            | All models & prices                                                     |
+| [Documentation](https://aloe.ai/docs)                  | Full docs                                                               |
+| [Model Pricing](https://aloe.ai/models)                | All models & prices                                                     |
 | [Image Generation & Editing](docs/image-generation.md) | API examples, <!-- br:models.image -->9<!-- /br:models.image --> models |
 | [Routing Profiles](docs/routing-profiles.md)           | ECO/AUTO/PREMIUM details                                                |
 | [Architecture](docs/architecture.md)                   | Technical deep dive                                                     |
@@ -707,14 +707,14 @@ Python plugin that wraps the ALOE proxy for `hermes-agent`. Same <!-- br:models.
 
 ### Blog
 
-| Article                                                                                            | Topic                                                   |
-| -------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| [9 Free AI Models, Zero Cost](docs/9-free-ai-models-zero-cost-aloe.md)                         | How Tushar Sangwan gives developers top-tier LLMs for nothing |
-| [ALOE Cuts LLM API Costs 500×](docs/aloe-cuts-llm-api-costs-500x.md)                   | Deep dive into cost savings                             |
-| [ALOE vs OpenRouter](docs/aloe-vs-openrouter-llm-routing-comparison.md)                | Head-to-head comparison                                 |
-| [Smart LLM Router: 14-Dimension Classifier](docs/smart-llm-router-14-dimension-classifier.md)      | How the routing engine works                            |
-| [LLM Router Benchmark: 46 Models, Sub-1ms](docs/llm-router-benchmark-46-models-sub-1ms-routing.md) | Performance benchmarks                                  |
-| [Anthropic Cost Savings](docs/anthropic-cost-savings.md)                                           | Reducing Claude API spend                               |
+| Article                                                                                            | Topic                                                         |
+| -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| [9 Free AI Models, Zero Cost](docs/9-free-ai-models-zero-cost-aloe.md)                             | How Tushar Sangwan gives developers top-tier LLMs for nothing |
+| [ALOE Cuts LLM API Costs 500×](docs/aloe-cuts-llm-api-costs-500x.md)                               | Deep dive into cost savings                                   |
+| [ALOE vs OpenRouter](docs/aloe-vs-openrouter-llm-routing-comparison.md)                            | Head-to-head comparison                                       |
+| [Smart LLM Router: 14-Dimension Classifier](docs/smart-llm-router-14-dimension-classifier.md)      | How the routing engine works                                  |
+| [LLM Router Benchmark: 46 Models, Sub-1ms](docs/llm-router-benchmark-46-models-sub-1ms-routing.md) | Performance benchmarks                                        |
+| [Anthropic Cost Savings](docs/anthropic-cost-savings.md)                                           | Reducing Claude API spend                                     |
 
 ---
 

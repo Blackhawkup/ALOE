@@ -193,9 +193,7 @@ async function cmdShare(
         console.log(`  ${e.id}  ${t}  [${e.model ?? "?"}${len}]`);
         console.log(`    ${summary}`);
       }
-      console.log(
-        `\nUse: aloe share <id> --as=<feishu|slack|discord|telegram|whatsapp|plain>\n`,
-      );
+      console.log(`\nUse: aloe share <id> --as=<feishu|slack|discord|telegram|whatsapp|plain>\n`);
     } catch (err) {
       console.error(`✗ Cannot fetch share list: ${err instanceof Error ? err.message : err}`);
       console.error(`  Is the proxy running on port ${port}?`);
@@ -615,9 +613,7 @@ async function cmdSetup(): Promise<void> {
       `  ⚠ openclaw plugins install reported a problem: ${err instanceof Error ? err.message : String(err)}`,
     );
     console.warn("    Continuing with manual config sync — if validation rejected the install,");
-    console.warn(
-      "    re-run `openclaw plugins install --force aloe` after gateway start.",
-    );
+    console.warn("    re-run `openclaw plugins install --force aloe` after gateway start.");
   }
 
   // Step 3: sync the models allowlist + provider config + auth profile directly.

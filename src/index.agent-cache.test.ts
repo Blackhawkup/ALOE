@@ -71,9 +71,7 @@ describe("syncAgentModelCache", () => {
 
     homeSetup.mod.syncAgentModelCache({ info: vi.fn() }, { forceWrite: true });
 
-    const ids = read(homeSetup.cachePath).providers.aloe.models.map(
-      (m: { id: string }) => m.id,
-    );
+    const ids = read(homeSetup.cachePath).providers.aloe.models.map((m: { id: string }) => m.id);
     expect(ids).toEqual(expected.map((m) => m.id));
   });
 

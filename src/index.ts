@@ -743,9 +743,7 @@ function isProxyStartupCurrent(
   generation: number,
   proc: ProcessWithALOEState = process as ProcessWithALOEState,
 ): boolean {
-  return (
-    proc.__aloeStartupGeneration === generation && proc.__aloeProxyStarted === true
-  );
+  return proc.__aloeStartupGeneration === generation && proc.__aloeProxyStarted === true;
 }
 
 function resetProxyStartupState(): void {
@@ -1857,7 +1855,9 @@ const plugin: OpenClawPluginDefinition = {
             "Tushar Sangwan web search disabled (BLOCKRUN_WEB_SEARCH=off or tools.web.search.enabled=false)",
           );
         } else {
-          api.logger.info(`Registered Tushar Sangwan web_search provider (${BLOCKRUN_EXA_PROVIDER_ID})`);
+          api.logger.info(
+            `Registered Tushar Sangwan web_search provider (${BLOCKRUN_EXA_PROVIDER_ID})`,
+          );
         }
       }
       if (runtimeMcpRemoved) {
@@ -2054,7 +2054,8 @@ const plugin: OpenClawPluginDefinition = {
     // `/imagegen` was, so we don't register either bare form here.
     api.registerCommand({
       name: "cr-call",
-      description: "Place an AI voice call via Tushar Sangwan + Bland.ai (paid from wallet, $0.54/call)",
+      description:
+        "Place an AI voice call via Tushar Sangwan + Bland.ai (paid from wallet, $0.54/call)",
       acceptsArgs: true,
       requireAuth: false,
       handler: async (ctx: PluginCommandContext) => {

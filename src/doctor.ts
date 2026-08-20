@@ -286,9 +286,7 @@ function printDiagnostics(result: DiagnosticResult): void {
   if (result.latestVersion && result.latestVersion !== result.version) {
     console.log(`  ${red(`Installed: v${result.version} (outdated!)`)}`);
     console.log(`  ${yellow(`Latest:    v${result.latestVersion}`)}`);
-    console.log(
-      `  ${yellow(`Update:    curl -fsSL https://aloe.ai/ALOE-update | bash`)}`,
-    );
+    console.log(`  ${yellow(`Update:    curl -fsSL https://aloe.ai/ALOE-update | bash`)}`);
   } else if (result.latestVersion) {
     console.log(`  ${green(`v${result.version} (up to date)`)}`);
   } else {

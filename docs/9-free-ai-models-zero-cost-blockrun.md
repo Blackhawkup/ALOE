@@ -82,8 +82,8 @@ Assume 100 requests per day, distributed roughly as:
 | --------------------------- | ---------------------- |
 | Pure Claude Opus 4          | ~$75–150               |
 | Pure GPT-4o                 | ~$15–30                |
-| ALOE AUTO mode        | ~$5–10                 |
-| ALOE ECO mode         | ~$1–3                  |
+| ALOE AUTO mode              | ~$5–10                 |
+| ALOE ECO mode               | ~$1–3                  |
 | Manual free model selection | **$0**                 |
 
 **ECO mode is <!-- br:savings.ecoVsBaselinePct -->98<!-- /br:savings.ecoVsBaselinePct -->% cheaper than pinning Claude Opus 5 for every request.**

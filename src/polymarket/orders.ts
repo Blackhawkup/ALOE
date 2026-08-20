@@ -99,9 +99,7 @@ async function resolveToken(
 ): Promise<ResolvedToken> {
   if (input.token_id) return { tokenId: input.token_id };
   if (!input.condition_id) {
-    throw new Error(
-      `Provide token_id, or condition_id + outcome (find them via aloe_markets).`,
-    );
+    throw new Error(`Provide token_id, or condition_id + outcome (find them via aloe_markets).`);
   }
   const market = (await clob.getMarket(input.condition_id)) as ClobMarket;
   const tokens = market?.tokens ?? [];

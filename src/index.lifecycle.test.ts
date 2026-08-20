@@ -45,7 +45,7 @@ describe("plugin lifecycle", () => {
 
   it("clears deferred proxy startup state during deactivate", async () => {
     const { default: plugin } = await import("./index.js");
-      vi.useFakeTimers();
+    vi.useFakeTimers();
     vi.useFakeTimers();
     const proc = process as NodeJS.Process & {
       __aloeProxyStarted?: boolean;
@@ -504,7 +504,7 @@ describe("plugin lifecycle", () => {
 
   it("strips managed aloe MCP server from api.config on register and does not re-inject", async () => {
     vi.doMock("./proxy.js", () => ({
-      getProxyPort: () => (Math.floor(Math.random() * 10000) + 20000),
+      getProxyPort: () => Math.floor(Math.random() * 10000) + 20000,
       startProxy: vi.fn(),
     }));
     vi.doMock("./auth.js", () => ({
@@ -553,7 +553,7 @@ describe("plugin lifecycle", () => {
     vi.doMock("./mcp-config.js", async () => await vi.importActual("./mcp-config.js"));
 
     const { default: plugin } = await import("./index.js");
-      vi.useFakeTimers();
+    vi.useFakeTimers();
 
     const api = {
       id: "test",
@@ -606,7 +606,7 @@ describe("plugin lifecycle", () => {
     }) => void;
 
     vi.doMock("./proxy.js", () => ({
-      getProxyPort: () => (Math.floor(Math.random() * 10000) + 20000),
+      getProxyPort: () => Math.floor(Math.random() * 10000) + 20000,
       startProxy: vi.fn(
         () =>
           new Promise((resolve) => {
@@ -713,4 +713,3 @@ describe("plugin lifecycle", () => {
     }
   });
 });
-

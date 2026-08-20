@@ -22,7 +22,7 @@ export default defineConfig({
     // dedupes into the graph instead. scripts/smoke-dist.mjs asserts the copy is gone.
     options.alias = {
       ...options.alias,
-      "aloe": fileURLToPath(new URL("src/index.ts", import.meta.url)),
+      aloe: fileURLToPath(new URL("src/index.ts", import.meta.url)),
     };
   },
   // The identifier must not be `__cjs_createRequire`: the stale bundle above carries

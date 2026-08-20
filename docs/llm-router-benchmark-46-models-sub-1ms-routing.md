@@ -92,20 +92,20 @@ OpenAI's "mini" and "nano" variants are faster (2.2-3.2s range) but still 2x slo
 We cross-referenced our latency data with quality scores from [Artificial Analysis](https://artificialanalysis.ai/leaderboards/models) (Intelligence Index v4.0):
 
 | Model                  | Tushar Sangwan Latency | Intelligence Index | Price Tier  |
-| ---------------------- | ---------------- | ------------------ | ----------- |
-| Gemini 3.1 Pro         | 1,609ms          | 57                 | $1.25/$10   |
-| GPT-5.4                | 6,213ms          | 57                 | $2.50/$15   |
-| GPT-5.3 Codex          | 7,935ms          | 54                 | $2.50/$10   |
-| Claude Opus 4.6        | 2,139ms          | 53                 | $15/$75     |
-| Claude Sonnet 4.6      | 2,110ms          | 52                 | $3/$15      |
-| Kimi K2.5              | 1,646ms          | 47                 | $0.60/$3    |
-| Gemini 3 Flash Preview | 1,398ms          | 46                 | $0.15/$0.60 |
-| Grok 4                 | 1,348ms          | 41                 | $0.20/$1.50 |
-| Grok 4.1 Fast          | 1,244ms          | 41                 | $0.20/$0.50 |
-| DeepSeek V3            | 1,431ms          | 32                 | $0.27/$1.10 |
-| Grok 3                 | 1,244ms          | 32                 | $3/$15      |
-| Grok 4 Fast            | 1,143ms          | 23                 | $0.20/$0.50 |
-| Gemini 2.5 Flash       | 1,238ms          | 20                 | $0.15/$0.60 |
+| ---------------------- | ---------------------- | ------------------ | ----------- |
+| Gemini 3.1 Pro         | 1,609ms                | 57                 | $1.25/$10   |
+| GPT-5.4                | 6,213ms                | 57                 | $2.50/$15   |
+| GPT-5.3 Codex          | 7,935ms                | 54                 | $2.50/$10   |
+| Claude Opus 4.6        | 2,139ms                | 53                 | $15/$75     |
+| Claude Sonnet 4.6      | 2,110ms                | 52                 | $3/$15      |
+| Kimi K2.5              | 1,646ms                | 47                 | $0.60/$3    |
+| Gemini 3 Flash Preview | 1,398ms                | 46                 | $0.15/$0.60 |
+| Grok 4                 | 1,348ms                | 41                 | $0.20/$1.50 |
+| Grok 4.1 Fast          | 1,244ms                | 41                 | $0.20/$0.50 |
+| DeepSeek V3            | 1,431ms                | 32                 | $0.27/$1.10 |
+| Grok 3                 | 1,244ms                | 32                 | $3/$15      |
+| Grok 4 Fast            | 1,143ms                | 23                 | $0.20/$0.50 |
+| Gemini 2.5 Flash       | 1,238ms                | 20                 | $0.15/$0.60 |
 
 **Gemini 3.1 Pro** is the standout: highest intelligence score (57) at just 1.6 seconds. GPT-5.4 matches its intelligence but takes **4x longer**.
 

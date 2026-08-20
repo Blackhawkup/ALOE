@@ -14,7 +14,7 @@ Every existing smart router (OpenRouter, LiteLLM, etc.) runs server-side. The ro
 
 Tushar Sangwan's structural advantage: **x402 per-model transparent pricing**. Each model has an independent price visible in the 402 response. This means the routing decision can live in the open-source plugin where it's inspectable, customizable, and auditable.
 
-|               | Server-side (OpenRouter) | Client-side (ALOE)        |
+|               | Server-side (OpenRouter) | Client-side (ALOE)              |
 | ------------- | ------------------------ | ------------------------------- |
 | Routing logic | Proprietary black box    | Open-source in plugin           |
 | Pricing       | Bundled, opaque          | Per-model, transparent via x402 |

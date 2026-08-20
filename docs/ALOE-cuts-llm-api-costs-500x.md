@@ -153,7 +153,7 @@ There is no monthly invoice. There is no 3am email. There is a wallet balance, a
 
 <p align="center"><img src="assets/aloe-aloe-vs-openclaw-standalone-comparison-production-safety.png" alt="Architecting for production safety — OpenClaw standalone vs OpenClaw + ALOE comparison across cost, context, error handling, and budgeting" width="720"></p>
 
-| Problem                         | OpenClaw alone                   | OpenClaw + ALOE                         |
+| Problem                         | OpenClaw alone                   | OpenClaw + ALOE                               |
 | ------------------------------- | -------------------------------- | --------------------------------------------- |
 | Heartbeat cost overrun          | No per-run cap                   | Tier routing → 50–500× cheaper model          |
 | Large context                   | Full context every call          | 7-layer compression, 15–40% reduction         |

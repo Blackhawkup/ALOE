@@ -380,9 +380,7 @@ export function transformPaymentError(errorBody: string): string {
       }
 
       // Unknown verification error — surface the debug reason
-      console.error(
-        `[ALOE] ${chain} payment verification failed: ${parsed.debug} payer=${wallet}`,
-      );
+      console.error(`[ALOE] ${chain} payment verification failed: ${parsed.debug} payer=${wallet}`);
       return JSON.stringify({
         error: {
           message: `${chain} payment verification failed: ${parsed.debug}`,
@@ -1984,9 +1982,7 @@ export async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
     console.warn(
       `[ALOE] ⚠ Payment chain is Solana but no mnemonic found — falling back to Base (EVM).`,
     );
-    console.warn(
-      `[ALOE]   To fix: run "npx aloe wallet recover" if your mnemonic exists,`,
-    );
+    console.warn(`[ALOE]   To fix: run "npx aloe wallet recover" if your mnemonic exists,`);
     console.warn(`[ALOE]   or run "npx aloe chain base" to switch to EVM.`);
   } else if (paymentChain === "solana") {
     console.log(`[ALOE] Payment chain: Solana (${BLOCKRUN_SOLANA_API})`);
@@ -2567,9 +2563,7 @@ export async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
             let completed = false;
             while (Date.now() < pollDeadline) {
               if (clientAbort.signal.aborted) {
-                console.log(
-                  `[ALOE] Client disconnected — abandoning image poll (id=${result.id})`,
-                );
+                console.log(`[ALOE] Client disconnected — abandoning image poll (id=${result.id})`);
                 return;
               }
               const pollResp = await payFetch(pollUrl, {
@@ -5329,9 +5323,7 @@ async function proxyRequest(
           remainingUsd > 0
             ? `$${remainingUsd.toFixed(4)} remaining`
             : `budget exhausted ($${runCostUsd.toFixed(4)}/$${options.maxCostPerRunUsd})`;
-        console.log(
-          `[ALOE] Budget downgrade (${budgetSummary}): excluded ${excluded.join(", ")}`,
-        );
+        console.log(`[ALOE] Budget downgrade (${budgetSummary}): excluded ${excluded.join(", ")}`);
 
         // A: Set visible warning notice — prepended to response so user sees the downgrade
         const fromModel = excluded[0];
@@ -5466,9 +5458,7 @@ async function proxyRequest(
         // Find a free model already in the chain
         const freeInChain = modelsToTry.findIndex((m, idx) => idx > i && FREE_MODELS.has(m));
         if (freeInChain > i + 1) {
-          console.log(
-            `[ALOE] Payment error — skipping to free model: ${modelsToTry[freeInChain]}`,
-          );
+          console.log(`[ALOE] Payment error — skipping to free model: ${modelsToTry[freeInChain]}`);
           i = freeInChain - 1; // loop will increment to freeInChain
           continue;
         }
@@ -5568,9 +5558,7 @@ async function proxyRequest(
           // Token-bucket rate limits often recover within milliseconds.
           // Retry once after 200ms before treating this as a model-level failure.
           if (!isLastAttempt && !globalController.signal.aborted) {
-            console.log(
-              `[ALOE] Rate-limited on ${tryModel}, retrying in 200ms before failover`,
-            );
+            console.log(`[ALOE] Rate-limited on ${tryModel}, retrying in 200ms before failover`);
             await new Promise<void>((resolve) => setTimeout(resolve, 200));
             if (!globalController.signal.aborted) {
               const retryController = new AbortController();
@@ -6282,9 +6270,7 @@ async function proxyRequest(
           headers: responseHeaders,
           model: actualModelUsed,
         });
-        console.log(
-          `[ALOE] Cached response for ${actualModelUsed} (${responseBody.length} bytes)`,
-        );
+        console.log(`[ALOE] Cached response for ${actualModelUsed} (${responseBody.length} bytes)`);
       }
 
       // Extract content and token usage from non-streaming response

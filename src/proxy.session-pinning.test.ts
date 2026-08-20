@@ -307,9 +307,7 @@ describe("proxy session pinning", () => {
 
     const sessionId = "shadow-pinned-session";
     expect((await postChat(proxy, sessionId, EXPLICIT_MODEL, "pin this model")).status).toBe(200);
-    expect((await postChat(proxy, sessionId, "aloe/auto", "simple follow-up")).status).toBe(
-      200,
-    );
+    expect((await postChat(proxy, sessionId, "aloe/auto", "simple follow-up")).status).toBe(200);
 
     expect(receivedModels).toEqual([EXPLICIT_MODEL, EXPLICIT_MODEL]);
     expect(shadows).toHaveLength(1);

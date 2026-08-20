@@ -200,11 +200,11 @@ All 5 must match the new version. If any mismatch, fix before declaring the rele
 
 ## Common Mistakes (Never Repeat These)
 
-| Mistake                                                      | Prevention                            |
-| ------------------------------------------------------------ | ------------------------------------- |
+| Mistake                                                | Prevention                            |
+| ------------------------------------------------------ | ------------------------------------- |
 | Hand-editing `CURRENT_ALOE_VERSION` (no longer exists) | Step 4 — server now auto-fetches      |
-| CHANGELOG entry missing or incomplete                        | Step 3 — write it before building     |
-| npm publish before tests pass                                | Steps 5-6 must precede Step 11        |
-| GitHub release notes empty                                   | Step 10 — extract from CHANGELOG      |
-| Git tag not pushed                                           | Step 9 — push tag separately          |
-| docs not reflecting new features                             | Update docs in same PR as the feature |
+| CHANGELOG entry missing or incomplete                  | Step 3 — write it before building     |
+| npm publish before tests pass                          | Steps 5-6 must precede Step 11        |
+| GitHub release notes empty                             | Step 10 — extract from CHANGELOG      |
+| Git tag not pushed                                     | Step 9 — push tag separately          |
+| docs not reflecting new features                       | Update docs in same PR as the feature |

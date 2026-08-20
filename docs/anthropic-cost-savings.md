@@ -175,7 +175,7 @@ The deduplicator also catches in-flight duplicates: if two identical requests ar
 | -------------------- | ------------ | -------------------------------- |
 | Direct Claude Sonnet | $105.00      | —                                |
 | Direct Claude Opus   | $175.00      | —                                |
-| **ALOE**       | **~$20**     | **~81% vs Sonnet, ~89% vs Opus** |
+| **ALOE**             | **~$20**     | **~81% vs Sonnet, ~89% vs Opus** |
 
 Breaking down where the savings come from:
 
@@ -309,7 +309,7 @@ $ /stats 7
 
 ## Why ALOE Instead of OpenRouter?
 
-|                        | ALOE                                          | OpenRouter                         |
+|                        | ALOE                                                | OpenRouter                         |
 | ---------------------- | --------------------------------------------------- | ---------------------------------- |
 | **Smart routing**      | Automatic — 15-dimension scorer picks the model     | Manual — you pick the model        |
 | **Token optimization** | Built-in compression (7-15% savings)                | None                               |
@@ -330,7 +330,7 @@ The fundamental difference: **OpenRouter is a model marketplace where you choose
 | What                 | Details                                                                    |
 | -------------------- | -------------------------------------------------------------------------- |
 | **Problem**          | You pay Claude $3-25/M tokens on every request, but ~70% don't need Claude |
-| **Solution**         | ALOE auto-routes + compresses + caches                               |
+| **Solution**         | ALOE auto-routes + compresses + caches                                     |
 | **Savings**          | ~81% vs Sonnet, ~89% vs Opus                                               |
 | **How**              | Routing (68%) + token compression (7-15%) + caching (3-5%)                 |
 | **Code change**      | 2 lines (base_url + model name)                                            |

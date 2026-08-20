@@ -314,9 +314,7 @@ export async function formatRecentLogs(days: number = 1): Promise<string> {
 
   const lines: string[] = [];
   lines.push("╔════════════════════════════════════════════════════════════════════════╗");
-  lines.push(
-    `║  ALOE Request Log — last ${days === 1 ? "24h" : `${days} days`}`.padEnd(72) + "║",
-  );
+  lines.push(`║  ALOE Request Log — last ${days === 1 ? "24h" : `${days} days`}`.padEnd(72) + "║");
   lines.push("╠══════════════════╦══════════════════════════╦═════════╦══════╦════════╣");
   lines.push("║  Time            ║  Model                   ║  Cost   ║  ms  ║ Status ║");
   lines.push("╠══════════════════╬══════════════════════════╬═════════╬══════╬════════╣");
@@ -347,9 +345,7 @@ export async function formatRecentLogs(days: number = 1): Promise<string> {
       72,
     ) + "║",
   );
-  lines.push(
-    "║  Logs: ~/.openclaw/aloe/logs/  (JSONL — one entry per request)".padEnd(72) + "║",
-  );
+  lines.push("║  Logs: ~/.openclaw/aloe/logs/  (JSONL — one entry per request)".padEnd(72) + "║");
   lines.push("╚════════════════════════════════════════════════════════════════════════╝");
 
   return lines.join("\n");

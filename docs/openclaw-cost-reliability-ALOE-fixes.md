@@ -70,7 +70,7 @@ When OpenClaw points at `aloe/auto`, you're pointed at a router with a fallback 
 
 ALOE also classifies failures before reacting — auth errors (401/403) skip straight to the next model instead of burning ~10s per retry; transient errors cascade; payment-simulation hiccups retry with a different model. The agent never sees a bare 503. And the bottom of every chain is the **free tier**, which isn't tied to any paid provider's uptime — so the worst case is "this turn ran on a free model for a minute," not "the gateway hung until I restarted it."
 
-| Failure mode                    | Pinned single model        | ALOE (`aloe/auto`)             |
+| Failure mode                    | Pinned single model        | ALOE (`aloe/auto`)                       |
 | ------------------------------- | -------------------------- | ---------------------------------------- |
 | Provider returns 503            | Session stalls / deadlocks | Falls to next model in chain             |
 | 401 / auth won't refresh        | ~10s wasted, then error    | Classified, skips straight to next model |
