@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint & Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Check formatting
+        run: npx prettier --check .
+
+      - name: Lint
+        run: npx eslint src/
+
+      - name: Typecheck
+        run: npm run typecheck
+
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      # The unit suite (713 tests) was never wired in here — only the lifecycle
+      # integration test ran, so a failing unit test could merge unnoticed.
+      - name: Unit tests
+        run: npm test
+
+      # Fails when a number in the docs disagrees with brand-numbers.json.
+      # Offline by design: it reads the committed snapshot and never fetches, so
+      # a blockrun.ai deploy in progress cannot fail this repo's CI.
+      - name: Brand numbers
+        run: node scripts/sync-brand-numbers.mjs --check
+
+      - name: Integration tests (lifecycle)
+        run: npx vitest run --config vitest.integration.config.ts test/integration/lifecycle.test.ts

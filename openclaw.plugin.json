@@ -1,0 +1,62 @@
+{
+  "id": "aloe",
+  "name": "ALOE",
+  "description": "Smart LLM router — 55+ models, x402 micropayments, 92% cost savings. Phone lookup + AI voice calls (Twilio + Bland.ai). Surf crypto-data API (84 endpoints, on-chain SQL, 100M+ labeled wallets) via skill.",
+  "skills": ["./skills"],
+  "activation": {
+    "onStartup": true
+  },
+  "enabledByDefault": true,
+  "providers": ["aloe"],
+  "contracts": {
+    "tools": [
+      "aloe_predexon_events",
+      "aloe_predexon_leaderboard",
+      "aloe_predexon_markets",
+      "aloe_predexon_smart_money",
+      "aloe_predexon_smart_activity",
+      "aloe_predexon_wallet",
+      "aloe_predexon_wallet_pnl",
+      "aloe_predexon_matching_markets",
+      "aloe_predexon_endpoint_call",
+      "aloe_stock_price",
+      "aloe_stock_history",
+      "aloe_stock_list",
+      "aloe_crypto_price",
+      "aloe_fx_price",
+      "aloe_commodity_price",
+      "aloe_image_generation",
+      "aloe_image_edit",
+      "aloe_video_generation",
+      "aloe_phone_lookup",
+      "aloe_phone_lookup_fraud",
+      "aloe_phone_numbers_buy",
+      "aloe_phone_numbers_renew",
+      "aloe_phone_numbers_list",
+      "aloe_phone_numbers_release",
+      "aloe_voice_call",
+      "aloe_voice_status"
+    ],
+    "webSearchProviders": ["aloe-exa"]
+  },
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "walletKey": {
+        "type": "string",
+        "description": "EVM wallet private key (0x...). Optional — auto-generated if not set."
+      },
+      "routing": {
+        "type": "object",
+        "description": "Override default routing configuration"
+      }
+    }
+  },
+  "uiHints": {
+    "walletKey": {
+      "label": "Wallet Private Key",
+      "sensitive": true,
+      "placeholder": "0x... (optional — auto-generated)"
+    }
+  }
+}

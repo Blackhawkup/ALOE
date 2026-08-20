@@ -1,0 +1,1654 @@
+# Changelog
+
+All notable changes to ALOE.
+
+---
+
+## v0.12.245 — August 12, 2026
+
+Catch-up sync to aloe: one free-model EOL (today's), ten model additions that had never been mirrored, and six stale prices. Catalog is now 70 chat-visible / 5 free, matching aloe exactly.
+
+### Removed — `free/deepseek-v4-flash` is dead upstream (aloe #367)
+
+NVIDIA published EOL for the whole `nvidia/deepseek-*` family: HTTP 410 ("has reached its end of life") on both of aloe's live probe passes this morning, prod gate fired `[ALERT][free-model-dead] kind=gone` twice. It was the last free DeepSeek — and the last 1M-context free model.
+
+- Dropped from the picker (`top-models.json`, 6 → 5 free — again exactly aloe's visible free set), the `FREE_MODELS` auto-pick cascade (8 → 7), and router-core's eco SIMPLE chain ([`18bf4ab`](https://github.com/TusharSangwan/router-core/commit/18bf4ab), pin bumped). Same `/exclude`-defeating failure mode as seed-oss-36b in v0.12.241, same fix.
+- Pins naming the model itself (`deepseek-v4-flash`, `v4-flash`, `nvidia/deepseek-v4-flash`) stay routable — the gateway redirects them to gpt-oss-120b. Generic shorthands (`deepseek-free`, `v4-pro`, `deepseek-v4-pro`, and the `deepseek-v3.2` ids whose redirects chained through flash) follow aloe's own retarget to `free/gpt-oss-120b` instead of chaining through a dead model.
+- Note bare `deepseek` still resolves to the **paid** `deepseek/deepseek-chat`, as before — no free alias was silently moved onto a paid SKU.
+
+### Added — ten models aloe shipped that ALOE never mirrored
+
+Seven chat (aloe #329, 2026-08-03), two chat from 2026-07-25, one image, one video:
+
+| model                          | price (in/out $/M) | notes                                                                                           |
+| ------------------------------ | ------------------ | ----------------------------------------------------------------------------------------------- |
+| `openai/gpt-5.6-sol-pro`       | 5.00 / 30.00       | pro reasoning mode of each 5.6 tier                                                             |
+| `openai/gpt-5.6-terra-pro`     | 1.00 / 6.00        | half the standard Terra rate                                                                    |
+| `openai/gpt-5.6-luna-pro`      | 0.10 / 0.60        | budget deep-reasoning tier                                                                      |
+| `google/gemini-3.6-flash`      | 1.50 / 7.50        | newest Flash, 17% output cut vs 3.5                                                             |
+| `google/gemini-3.5-flash-lite` | 0.30 / 2.50        | high-throughput thinking tier                                                                   |
+| `qwen/qwen3.7-plus`            | 0.32 / 1.28        | 1M ctx; genuinely 131072 max output                                                             |
+| `qwen/qwen3.7-flash`           | 0.03 / 0.13        | cheapest Qwen tier                                                                              |
+| `tencent/hy3`                  | 0.132 / 0.528      | #1-usage open model, 262K ctx                                                                   |
+| `xiaomi/mimo-v2.5-pro`         | 0.435 / 0.87       | 1M ctx reasoning                                                                                |
+| `google/nano-banana-2`         | $0.09/image        | Gemini 3.1 Flash imagegen                                                                       |
+| `bytedance/seedance-2.0-mini`  | $0.079/s           | 720p + audio, 4–15s; aloe signs the 3dp-floored rate, so we mirror 0.079 not the raw 0.0797 |
+
+- **toolCalling LIVE-VERIFIED** on all seven new chat models that carry the flag: qwen3.7-plus, qwen3.7-flash, hy3, mimo-v2.5-pro, gemini-3.6-flash, gemini-3.5-flash-lite, and gpt-5.6-luna-pro each returned a structured `tool_calls` array (name + valid JSON args, `finish_reason: "tool_calls"`) through the live gateway (~$0.003/probe, the qwen3.7-max pattern).
+- Generic aliases untouched: `gpt5`/`gpt-5.6` stay on standard Terra, bare `qwen` stays unbound, bare `nano-banana` and `seedance` stay on their cheaper originals. New pins: `sol-pro`/`terra-pro`/`luna-pro` (+ full forms), `qwen3.7-plus`/`-flash`, `hy3`/`tencent`/`hunyuan`, `mimo`/`xiaomi`, `gemini-3.6-flash`, `banana-2`, `seedance-2-mini`.
+
+### Fixed — six stale prices (telemetry + cost-cap accounting)
+
+| model                        | was          | now              | source                                             |
+| ---------------------------- | ------------ | ---------------- | -------------------------------------------------- |
+| `openai/gpt-5.6-terra`       | 2.50 / 15.00 | **2.00 / 12.00** | OpenAI's 2026-07-30 cut (aloe #326)            |
+| `openai/gpt-5.6-luna`        | 1.00 / 6.00  | **0.20 / 1.20**  | same                                               |
+| `deepseek/deepseek-chat`     | 0.20 / 0.40  | **0.14 / 0.28**  | aloe #354 (old rate was 1.43× real)            |
+| `deepseek/deepseek-reasoner` | 0.20 / 0.40  | **0.14 / 0.28**  | same                                               |
+| `zai/glm-5`                  | 0.60 / 1.92  | **1.00 / 3.20**  | aloe #354                                      |
+| `google/gemini-3.5-flash`    | 0.50 / 3.00  | **1.50 / 9.00**  | aloe #304 (was billed at 1/3 of Google's rate) |
+
+Charges are server-dictated via 402 as always, but these numbers feed `logUsage` and the strict-mode `maxCostPerRun` gate, so the two-month-stale gemini-3.5-flash row was letting capped wallets underestimate by 3×. README pricing tables re-tiered to match (luna drops to the budget table, glm-5 and gemini-3.5-flash move up to mid-range).
+
+### Changed — brand numbers 71 → 70 chat, 6 → 5 free; aliases 204 → 229
+
+Markers refreshed from aloe's live catalog, plus the two plain-text surfaces the markers can't reach (`package.json` description, SKILL.md frontmatter). The alias count moves in aloe's `src/lib/brand-numbers.ts` via [aloe #371](https://github.com/TusharSangwan/aloe/pull/371) — the local snapshot leads prod until that merges.
+
+---
+
+## v0.12.244 — August 8, 2026
+
+Syncs the Seedance video family to aloe, which added a fourth model and repriced the other three.
+
+### Added — `bytedance/seedance-2.5`
+
+- 720p with synced audio, long-form (up to 30s vs the 12–15s ceiling on the rest of the family), multilingual, image-to-video capable. For 1080p or 4K, Seedance 2.0 Pro is still the one.
+- Reachable as `seedance-2.5` or `seedance-2-5`, and listed in `/videogen`.
+- **Bare `seedance` deliberately stays on 1.5-pro.** It is the cheapest of the family ($0.070/s vs 2.5's $0.315/s) and `/videogen` documents it as "default — cheapest"; repointing the short name at the newest tier would 4.5× the quote for everyone who typed it expecting the default. Same rule that keeps `kimi` on K2.7.
+- Note: 2.5 has no OpenRouter failover upstream, so a token360 outage surfaces as an error rather than quietly rendering on a different model.
+
+### Fixed — all three existing Seedance rates were stale
+
+aloe repriced the family (aloe #351/#354) and ALOE was still carrying the old numbers:
+
+| model               | was     | now       |
+| ------------------- | ------- | --------- |
+| `seedance-1.5-pro`  | 0.0875  | **0.070** |
+| `seedance-2.0-fast` | 0.22687 | **0.165** |
+| `seedance-2.0`      | 0.28358 | **0.227** |
+
+These are base rates; `estimateVideoCost` applies the 5% margin at use. **Telemetry only** — the charge comes from the x402 payment header, and this estimate is the fallback for when `paymentStore` is empty. So the impact was a skewed usage log, never a wrong bill.
+
+### Changed — published alias count 202 → 204
+
+The two new pins move the total, and `src/router/brand-numbers.test.ts` pins it against aloe's artifact. That number is hand-maintained in aloe (`src/lib/brand-numbers.ts`) because the alias table lives here and cannot be counted from there. Updated on both sides; the guard is what caught it.
+
+---
+
+## v0.12.243 — August 8, 2026
+
+Clears the last **high**-severity dependency alert. `npm audit` on this repo goes from 4 high / 17 low to **0 high / 17 low**.
+
+### Security — `bigint-buffer` is out of the tree
+
+- `bigint-buffer`'s native `toBigIntLE()` carries an unpatched buffer overflow ([GHSA-3gc7-fjrx-p6mg](https://github.com/advisories/GHSA-3gc7-fjrx-p6mg)). There is no fixed release anywhere: 1.1.5 is the last publish, from 2019, and `@trufflesuite/bigint-buffer@1.1.10` ships a **byte-identical** `src/bigint-buffer.c`, so overriding onto the fork would launder the advisory without fixing anything.
+- It reached us four levels down: `@aloe/llm` → `@solana/spl-token` → `@solana/buffer-layout-utils` → `bigint-buffer`. ALOE never executes that path — it imports the EVM `createPaymentPayload`, not `createSolanaPaymentPayload`, and Solana payments go through `@x402/svm`. The package still landed in every consumer's lockfile because `@solana/spl-token` was an **optional dependency** of `@aloe/llm`, and npm installs those automatically.
+- Fixed upstream in [`@aloe/llm@3.10.0`](https://github.com/TusharSangwan/aloe-llm-ts/releases/tag/v3.10.0): the Solana packages are now optional **peer** dependencies, which npm does _not_ auto-install. Consumers who make Solana payments through that SDK install `@solana/web3.js` and `@solana/spl-token` explicitly and get an actionable error if they forget.
+- ALOE's floor moves to `@aloe/llm@^3.10.0` and the lockfile is regenerated. Verified: `npm ls bigint-buffer` returns empty, and `dist/` still contains zero references to `spl-token`, `buffer-layout-utils`, or `toBigIntLE`.
+- **Trap worth remembering:** bumping the dependency alone did not drop it. `npm install @aloe/llm@^3.10.0` updated the SDK but kept the stale transitive entry — the optional-dependency-to-optional-peer change only takes effect after a full `rm -rf node_modules package-lock.json` regeneration. Same class as the override staleness in v0.12.240.
+- `@solana/kit` re-verified at **5.5.1** after the regeneration (the v5-vs-v6 split is what broke Solana signing back in March).
+
+Remaining: 17 low from the `elliptic` chain under `@polymarket/*` (ethers v5). 6.6.1 is the latest release and is still in the advisory's range, so there is nothing to move to.
+
+---
+
+## v0.12.242 — August 7, 2026
+
+Makes the deterministic **Router v3.4 portfolio strategy the default for Auto**, and moves the routing engine out of this repo into [`TusharSangwan/router-core`](https://github.com/TusharSangwan/router-core).
+
+Thanks to @KillerQueen-Z for the router work and the extraction (#238).
+
+### Changed — portfolio routing is the Auto default
+
+- Auto now classifies task shape locally, enforces tool / vision / structured-output / context constraints as hard filters, then ranks an ordered fallback portfolio. The previous path picked a fixed tier primary after rule classification. On a frozen 100-task, three-arm evaluation the new policy scored 57% vs 49% and cut normalized cost per successful task by 6.44%.
+- Routing stays **100% local and deterministic** — no extra model call, no network hop. Model capabilities are injected from ALOE's live catalog at proxy startup, so the product catalog remains authoritative.
+- `tool_choice: "none"` is authoritative, and host tool descriptions no longer create false per-turn tool requirements.
+- Rollback lever: set `routing.strategy = "rules"`. An optional local-only shadow mode compares the two strategies' metadata without issuing a second paid completion or persisting any prompt.
+
+### Changed — routing engine extracted to router-core
+
+- `src/router/{config,rules,selector,strategy,types}.ts` are gone; `src/router/index.ts` re-exports `@aloe/router-core`, pinned to immutable commit `6a790eb`. `aloe/router` stays available as a subpath export for existing SDK consumers.
+- The dependency is **`devDependencies`, deliberately**: tsup's `noExternal` inlines it into `dist/`, so nothing imports it at runtime. Keeping it in `dependencies` would make every `npm install aloe` fetch a `codeload.github.com` tarball at install time — resolved from a bare URL with no lockfile-backed integrity, since the published package doesn't ship our lockfile, and broken whenever GitHub is unreachable. The packed tarball still declares zero non-registry dependencies.
+
+### Fixed — a stale build put the retired seed-oss-36b back in three fallback chains
+
+- `dist/router/index.js` shipped `free/seed-oss-36b` in three fallback chains even though router-core's pinned commit had already removed it. The committed artifact had been built against a pre-fix install. Rebuilt.
+- This is the same class of bug as v0.12.241: Tushar Sangwan **server-redirects** retired free ids, so routing to one **silently defeats `/exclude`** — the caller excludes a model, the router hands it the request anyway, and the gateway answers from the redirect target.
+- **A correct commit pin does not imply a correct committed `dist/`.** This repo ships `dist/`, so both have to be checked.
+
+### Added — free-model liveness guard
+
+- `src/router/free-model-liveness.test.ts` walks every tier container's `primary` and `fallback` entries and asserts each `free/*` id is still live. The allowed set is **derived from `src/top-models.json`** (plus the two deliberate `gpt-oss` defaults), so a future free-tier resync updates the guard automatically — models should never be added to it by hand.
+- It exists because router selection coverage left this repo along with the code (`selector.test.ts` and `strategy.test.ts` deleted, none added), and the stale-build regression above walked straight through the gap. Verified to fail against that exact regression, and it fails loudly rather than vacuously if the upstream config shape changes.
+
+---
+
+## v0.12.241 — August 7, 2026
+
+Finishes the free-tier resync that #232 started. That commit refreshed the **brand markers** to aloe's live catalog (71 chat-visible / 6 free) but touched no code, so the router kept routing to a model that has been dead upstream since 2026-08-03.
+
+### Fixed — `free/seed-oss-36b` is EOL and was still in the auto-pick cascade
+
+- aloe's probe got **HTTP 410 Gone** from NVIDIA on both passes (2026-08-03) and the production health gate fired `[ALERT][free-model-dead] kind=gone` the same day. Upstream hid the model and re-pointed its own dependents — `qwen3-coder-480b` and `devstral-2-123b`, which both used seed-oss as their fallback — at `gpt-oss-120b`.
+- ALOE was still carrying it in three places that matter at request time:
+  - the **`FREE_MODELS` auto-pick cascade** (`proxy.ts`) — 9 entries → **8**,
+  - the **picker** (`src/top-models.json`) — 7 free → **6**, now exactly aloe's visible free set,
+  - **three router fallback chains** (`router/config.ts`).
+- This is not cosmetic. A dead model that the gateway server-redirects **silently defeats `/exclude`**: a caller excludes it, the router hands the request to it anyway, and the gateway answers from the redirect target. Same failure mode as `mistral-large-3-675b` in v0.12.239 — same fix.
+- The `free` profile's SIMPLE chain drops the rung outright (`gpt-oss-120b`/`20b` already head it). The premium and agentic "NVIDIA free ultimate backstop" rungs are **retargeted** to `free/gpt-oss-120b` rather than dropped, since nothing else free sat below them.
+
+### Changed — generic coding aliases follow the gateway, pins stay routable
+
+Six shorthands promised "a live free coder" and pointed at a dead one. They now resolve to `free/gpt-oss-120b`, matching aloe's own retarget: `qwen-coder`, `qwen-coder-free`, `coder-free`, `glm-free`, `devstral`, `devstral-2`.
+
+Unchanged and still routable, because they name the model itself rather than a capability: `seed-oss`, `seed-oss-36b`, `nvidia/seed-oss-36b`, and the catalog entry. The gateway redirects them, exactly as it does for the other retired free ids.
+
+---
+
+## v0.12.240 — August 4, 2026
+
+Security housekeeping. Clears **13 of the 15 open Dependabot alerts** — including 3 of the 4 highs — by removing the thing that was silently swallowing our `overrides` block.
+
+### Fixed — openclaw's `npm-shrinkwrap.json` was voiding every override we wrote
+
+- `openclaw` ≤ 2026.7.1 publishes with `hasShrinkwrap: true`. A shipped `npm-shrinkwrap.json` pins that package's **entire subtree** verbatim, and npm resolves it ahead of the root project's `overrides`. The failure is silent and actively misleading: `npm ls` prints `fast-uri@3.1.2 overridden` next to a version the override forbids.
+- So v0.12.239's `fast-uri`/`hono`/`brace-expansion` overrides — and the pre-existing ones — **never took effect** on anything under `node_modules/openclaw/`. Deleting `package-lock.json` and reinstalling from scratch did not help either; only the shrinkwrap going away does.
+- Bumped the `openclaw` dev dependency to **`^2026.7.2-beta.7`**, the first release that ships without the shrinkwrap. With it gone the overrides land, and the openclaw subtree audits clean:
+
+  | package             | before  | after  |
+  | ------------------- | ------- | ------ |
+  | `undici`            | 8.5.0   | 8.10.0 |
+  | `fast-uri`          | 3.1.2   | 3.1.5  |
+  | `hono`              | 4.12.25 | 4.13.0 |
+  | `@hono/node-server` | 1.19.14 | 2.1.0  |
+  | `ip-address`        | 10.2.0  | 10.4.0 |
+  | `brace-expansion`   | 5.0.7   | 5.0.9  |
+
+- Overrides for `@hono/node-server` and `ip-address` are new; `ws`, `postcss`, `tar`, `brace-expansion`, and `fast-uri` floors were raised. All still inside the **single** `overrides` key (see v0.12.238's gotcha).
+- The `openclaw` scanner integration test still runs against the real scanner chunk on the new version — it throws rather than skipping when the chunk cannot be loaded, so a silent pass is not possible.
+
+### Changed — contributor Node floor is now 22.22.3
+
+- openclaw 2026.7.2's preinstall gate rejects Node below `22.22.3`, so `npm install` in this repo now requires it. CI's `node-version: "22"` already resolves above the floor.
+- **Published users are unaffected**: `openclaw` is a dev dependency and an optional peer, and is never bundled into `dist/`. The package's own `engines.node` stays `>=22`.
+
+### Changed — bundled `undici` floor raised to ^8.10.0
+
+- tsup inlines runtime deps, so this one does ship. The previously bundled 8.9.0 was already past the advisory range (`< 8.9.0`); the bump is the current patch line, not a vulnerability fix. `dist/` grows the corresponding upstream changes (TLS `servername` handling, idle-socket timeout).
+
+### Not fixed — two alerts with no upstream patch
+
+- **`bigint-buffer` (high, GHSA-3gc7-fjrx-p6mg).** No fixed release exists: 1.1.5 is the last publish (2019), and `@trufflesuite/bigint-buffer@1.1.10`'s `src/bigint-buffer.c` is **byte-identical** to it — the fork is not a patch, so overriding onto it would launder the alert without fixing anything. It reaches the lockfile as an optional dependency of `@aloe/llm` (`→ @solana/spl-token → @solana/buffer-layout-utils`), pulled in only by `createSolanaPaymentPayload`, which ALOE never imports — we use the EVM `createPaymentPayload`. Verified absent from the shipped bundle: `dist/` contains zero references to `spl-token`, `buffer-layout-utils`, or `toBigIntLE`. The real fix belongs upstream in `@aloe/llm`, whose Solana extras are already lazy `await import()`s and could be optional peers instead of optional dependencies.
+- **`elliptic` (low, GHSA-848j-6mx2-7j84).** 6.6.1 is the latest release and is still in the vulnerable range. It arrives via ethers v5 under `@polymarket/*`.
+
+---
+
+## v0.12.239 — August 2, 2026
+
+Catches up with aloe's **2026-07-28 free-model re-probe** (aloe #309) and the **2026-07-29 fee revert** (aloe #319). Verified live against the gateway before syncing: `nvidia/deepseek-v4-flash` answers and stays $0; the brand artifact now publishes 65 chat models / 7 free.
+
+### Changed — free/mistral-large-3-675b is EOL at NVIDIA (HTTP 410)
+
+- aloe's 07-28 re-probe got **410 Gone on both passes** for `mistral-large-3-675b` (plus `qwen3-next-80b` and `qwen3.5-397b`, which ALOE had already dropped on 07-17). Upstream hides it and server-redirects calls to `gpt-oss-120b`.
+- Removed from the `FREE_MODELS` auto-pick cascade, the picker (`top-models.json`), and the eco SIMPLE fallback chain — a server-redirected dead model in the cascade silently defeats `/exclude`. The catalog entry and explicit pins (`mistral-large`, `mistral-large-3-675b`) stay routable; the gateway redirects them.
+- `mistral-free` re-aimed at `free/mistral-nemotron`, the last live free Mistral (aloe demoted its own `/free-mistral` primary the same way).
+- `free/deepseek-v4-flash` **stays**: the same probe measured it slow on real prompts (~10 tok/s, 74.6s) but completing — and it is the only 1M-context free model. The 07-17 "3.2s recovery" was a short-ping artifact.
+- Free count is now **7** across README, SKILL.md, and brand-number markers (chat-visible total: 65).
+
+### Changed — per-transaction fee mirrored back to $0.001
+
+- aloe reverted the flat settlement fee from $0.002 to **$0.001/tx** on 2026-07-29 (#319). `estimateAmount()` and the README pricing note follow. Payments were always server-quoted via 402 — the old value only over-reserved balance pre-checks and overstated usage logs by $0.001/call.
+
+### Security — dependency refresh
+
+- `openclaw` dev dependency bumped to 2026.7.1; overrides added for `brace-expansion`, `fast-uri`, `tar`, `hono`, and `jayson > uuid` (all merged into the single existing `overrides` block — see v0.12.238's gotcha), and `package-lock.json` regenerated. tsup bundles runtime deps into `dist/`, so the override floors ship in the artifact.
+
+---
+
+## v0.12.238 — August 2, 2026
+
+### Security — vulnerable axios 0.27.2 was being bundled into every install
+
+- `@polymarket/builder-relayer-client@0.0.10` pins `axios@^0.27.2` (2022-era, 20+ open advisories including high-severity SSRF/CSRF classes). Because tsup bundles all dependencies (`noExternal`), that copy shipped inside `dist/` to every user — npm overrides in a consumer's project can't reach it. Added a root `axios: "$axios"` override so the whole tree dedupes to the current 1.x line; the relayer client's axios usage (`create`/`request`/`isAxiosError`) is 1.x-compatible, and the newer Polymarket SDKs in the same tree were already on 1.x. Verified the 0.27.2 code is gone from the built bundle.
+- **Gotcha for next time:** `package.json` already had an `overrides` block further down (basic-ftp/ws/postcss/esbuild). Adding a second `overrides` key parses as valid JSON but npm silently uses only the last one — merge into the existing block.
+- Remaining known-unfixable transitive: `bigint-buffer` (buffer overflow in `toBigIntLE()`, no patched release exists) via `@aloe/llm → @solana/spl-token`. It processes our own wallet-balance buffers, not attacker-controlled input; tracked until the Solana ecosystem moves off it.
+
+---
+
+## v0.12.237 — August 2, 2026
+
+### Fixed — huge default `max_tokens` no longer forces free-model fallback
+
+- OpenClaw can send a model's default output ceiling as `max_tokens` (128k on Opus-class models). The low-balance preflight treated that as guaranteed spend, so a paid call to `anthropic/claude-opus-5` could silently fall back to a free model even with $5+ in the wallet. The preflight now caps its assumed output at 4096 tokens via `estimateBalancePreflightAmount()`; the request payload is untouched and x402 still enforces the real server quote.
+- `estimateAmount()` stays exact where worst-case matters: the strict `maxCostPerRun` cap and cached-balance deduction. The free-fallback path now also clears the stale paid estimate, so a request that fell back to free no longer deducts a paid-model estimate from the cached balance.
+- Thanks to @0xCheetah1 for the fix and regression suite (#217).
+
+---
+
+## v0.12.236 — August 2, 2026
+
+### Fixed — `vision` missing on MiniMax M3
+
+- `minimax/minimax-m3` was registered without `vision`, so `filterByVision()` dropped it from the candidate pool whenever a request carried an `image_url` content part. aloe's catalog lists M3 as chat+reasoning+coding with no vision category, but that is the same upstream under-claim class as `claude-haiku-4.5`/`claude-sonnet-4.6` (see v0.12.235): a live gateway probe on 2026-08-02 sent a two-color image to M3 and it described both colors and their positions correctly. `minimax-m2.7` is text-only upstream and stays without the flag; a regression test pins both. (#226)
+
+### Notes
+
+- Rejected in review, not merged: a proposed switch of the music default to `minimax/music-3.0` (#227). aloe's gateway registers only `minimax/music-2.5+` and rejects unknown audio model ids with `400`, so the new default would have failed every music request. The mock-upstream e2e suite cannot catch invalid gateway ids — it accepts any model string.
+
+---
+
+## v0.12.235 — July 25, 2026
+
+Fixes capability-flag drift found by auditing all 88 shared entries against aloe's `categories` array. What began as a single missing `vision` on `gpt-5.4-pro` turned out to be 16 mismatches; 9 are corrected here, 7 are deliberate and now pinned by tests.
+
+### Fixed — `vision` missing on the max-compute Pro tiers
+
+- `openai/gpt-5.2-pro` and `openai/gpt-5.4-pro` were registered without `vision`, though aloe lists it on both. `vision` gates `filterByVision()`, so image requests were dropping both models from the candidate pool for no reason — a silent capability under-claim, not a routing preference.
+
+### Fixed — `reasoning` missing on seven thinking-capable models
+
+- `google/gemini-3-flash-preview`, `free/nemotron-nano-9b-v2`, `free/nemotron-nano-12b-v2-vl`, `zai/glm-5`, `zai/glm-5.1`, `zai/glm-5.2`, `zai/glm-5-turbo`.
+- The flag enrolls an id in `REASONING_MODEL_IDS` (`proxy.ts`), raising its per-model timeout from 60s to 180s. These models genuinely think before first token, so the 60s ceiling was cutting them off early on cold start. None of the seven is a tier primary, so the longer stall is confined to fallback paths that only run after a primary already failed.
+
+### Kept — `vision` on two Claude models aloe under-claims
+
+- aloe lists `claude-haiku-4.5` as chat+coding and `claude-sonnet-4.6` as chat+coding+reasoning; neither carries `vision`. That is an **upstream catalog bug, not a ALOE over-claim** — a live gateway probe sent an image to `claude-haiku-4.5` and it read the image correctly.
+- Dropping the flag to "match" the source of truth would have broken image routing to the premium REASONING primary and both agentic primaries. The source-of-truth rule governs pricing, ids and aliases; it is not a mandate to copy an upstream data error into a working-feature regression. Worth fixing in aloe's catalog.
+
+### Notes
+
+- Also confirmed the deployed `/api/v1/models` response lags aloe's repo on `categories` — audit against the repo, not the live endpoint.
+- Three remaining `reasoning` gaps (`openai/gpt-5.3-codex`, `google/gemini-3.1-flash-lite`, `free/gpt-oss-120b`) are **intentionally left alone**: all three are tier primaries, so the flag would triple the failover stall on default routing paths. Changing them is a latency decision, not a data fix.
+- `xai/grok-4.20-*` are hidden upstream and left untouched.
+- A new `capability flags vs aloe's catalog` suite pins the resolved set so this cannot drift silently again.
+
+---
+
+## v0.12.234 — July 25, 2026
+
+Closes two catalog gaps found by diffing the live gateway against `BLOCKRUN_MODELS` during the Opus 5 sync — both models were already live upstream and billable, but absent from the registry, so they carried no local pricing and never appeared in the picker.
+
+### Added — GPT-5.5 Pro
+
+- **`openai/gpt-5.5-pro`**: max-compute tier of the 5.5 family. $30/$180 per 1M, **1.05M context**, 128K max output, reasoning + vision. Mirrors the `gpt-5.4-pro` shape and joins it in the picker.
+- Pin: **`gpt-5.5-pro`**. Deliberately **not** flagged `agentic` (same as `gpt-5.4-pro`) — max-compute latency makes it a poor multi-step autonomous pick, and the flag would pull it into agentic tier selection.
+- Upstream also applies OpenAI's long-context tier (2x input / 1.5x output above 272K prompt tokens), which this registry cannot express. As with grok, that skews `logUsage` only — the charge is server-dictated via 402.
+
+### Added — ChatGPT Instant (`chat-latest`)
+
+- **`openai/chat-latest`**: ChatGPT's default model, tuned for speed and concision. $5/$30 per 1M, 128K context, chat + vision. Pins: **`chat-latest`**, **`chatgpt`**.
+- The id is intentionally version-less. Upstream exposes ChatGPT's default _only_ as the rolling `chat-latest` alias, so pinning it means "whatever ChatGPT's default is today", not a fixed snapshot — the display name tracks the current one and needs refreshing whenever OpenAI rolls it.
+- **Not** added to the picker: a rolling alias is a pin-on-purpose model, not a curated default. Same treatment as `sonnet-4.5` and `opus-4.6` — resolvable, just not featured.
+- Registered with neither `reasoning` nor `agentic`, matching its upstream categories. Claiming reasoning would mis-route it into the REASONING tier and silently raise its per-model timeout from 60s to 180s.
+
+`toolCalling: true` is **live-verified on both** — gateway probes returned structured `tool_calls` arrays (`get_weather` + valid JSON args, `finish_reason: "tool_calls"`), no textual leak.
+
+Routing tiers are untouched: neither model is benchmarked, and a $30/$180 model does not belong in a fallback chain reached by an automatic tier decision.
+
+---
+
+## v0.12.233 — July 24, 2026
+
+Syncs **Claude Opus 5**, which Anthropic shipped and aloe added on launch day (aloe `src/lib/models.ts`, [#283](https://github.com/aloeai/aloe/pull/283)).
+
+### Added — Claude Opus 5 (Anthropic flagship)
+
+- **`anthropic/claude-opus-5`** registered in `BLOCKRUN_MODELS`: **$5/$25** per 1M, **1M context**, 128K max output, reasoning + vision + agentic tool use. Anthropic bills the 1M window at standard rates, so there are no long-context tier fields to model. Verified against both source-of-truth planes — the live gateway (`GET /api/v1/models`) and aloe's registry, which lists it in the featured array with `fallbackModel: anthropic/claude-opus-4.8`.
+- Added to `top-models.json` at rank 2 (picker + default-model allowlist), the README premium pricing table, and the SKILL catalog line.
+- Inserted at the head of the in-family Opus fallback chain in **four** routing tiers — premium COMPLEX + REASONING, agentic COMPLEX + REASONING. Cost-neutral, so no tier primary moved: premium COMPLEX stays on `claude-fable-5`, and the `auto`/`eco`/`free` profiles are untouched.
+- `aloe doctor opus` now runs on Opus 5 (`DOCTOR_MODELS` in `src/doctor.ts`), same `~$0.01` estimate.
+
+### Changed — bare `opus` alias promoted to Opus 5
+
+- **`opus`, `anthropic/opus`, and `aloe/opus` now resolve to `anthropic/claude-opus-5`** (previously 4.8). New explicit pins `opus-5` / `opus-5.0` / `opus-5-0` / `anthropic/claude-opus-5-0`.
+- The generic-alias rule is "only move it with the cost tradeoff argued explicitly" — here the tradeoff is **zero**. Opus 5 is $5/$25 with a 1M/128K envelope, identical to 4.8 on every axis that can bill or truncate a caller, so no wallet with a per-call cap changes behavior. aloe made the same call upstream, repointing its `aloe-premium` redirect from 4.8 to Opus 5 on launch day; leaving `opus` on 4.8 would have made the proxy disagree with the gateway it fronts. Contrast `kimi`, deliberately left on K2.7 in v0.12.229 because K3 is ~5x the price.
+- **Every 4.x pin stays routable** — `opus-4.8`, `opus-4.7`, `opus-4.6`, `opus-4.5` and their `anthropic/claude-opus-4-N` forms are unchanged, as are the generation-generic `opus-4` / `anthropic/claude-opus-4` (they name the 4-series, not "newest"). Pinned by `src/models.test.ts`.
+- `selector.ts` savings baseline stays on `claude-opus-4.7` — pricing-identical, so no change to the savings math.
+
+### Fixed — stale premium COMPLEX primary in the docs
+
+- `README.md` and `docs/routing-profiles.md` both still listed the premium COMPLEX primary as `claude-opus-4.8`; it has been `claude-fable-5` ($10/$50) since v0.12.221. Corrected in both.
+
+---
+
+## v0.12.232 — July 20, 2026
+
+Fixes a cost-control hole: requests using OpenAI's current `max_completion_tokens` field were priced as if they had asked for nothing.
+
+### Fixed — `max_completion_tokens` was never read
+
+- OpenAI deprecated `max_tokens` in favour of `max_completion_tokens`, but ALOE only ever read the legacy field. Every request from a client on the modern field was sized at the 4096 default no matter how much output it actually requested — the string `max_completion_tokens` did not appear anywhere in `src/`.
+- That number is not cosmetic. It feeds the routing decision, `estimateAmount` (balance pre-check), **the strict-mode `maxCostPerRun` cap**, `chargedOutputTokens` in `logUsage`, and the pre-auth reuse check. A request asking for 65536 output tokens was priced at 1/16th of its real cost and **walked straight through a cost cap the user had set** — reproduced in `src/proxy.max-tokens-cap.test.ts`, which fails with HTTP 200 before the fix and 429 after.
+- The same gap sat in `src/payment-preauth.ts`, where it sized the request at **0** tokens: a payment authorization cached for a tiny request could be reused to pay for a much larger one.
+- Both now share `resolveMaxTokens()` (new `src/max-tokens.ts`, kept separate to avoid a `proxy` ↔ `payment-preauth` import cycle). It reads either field, ignores values that cannot be a token budget (`NaN`, `Infinity`, negatives, non-numbers — any of which would silently disable the cap comparison), and when a client sends both takes the **larger**: over-estimating only makes the pre-check stricter, under-estimating defeats it.
+- Affects all 55+ models; the exposure scaled with output price, so `moonshot/kimi-k3` ($15/M out) was the worst case.
+
+---
+
+## v0.12.231 — July 20, 2026
+
+Syncs **Qwen3.7 Max**, which aloe added and endpoint-probed on 2026-07-20 (aloe `src/lib/models.ts`). Thanks **[@KillerQueen-Z](https://github.com/KillerQueen-Z)** ([#215](https://github.com/TusharSangwan/ALOE/pull/215)).
+
+### Added — Qwen3.7 Max (Alibaba flagship)
+
+- **`qwen/qwen3.7-max`** registered in `BLOCKRUN_MODELS`: Alibaba's Max tier resold through aloe's OpenRouter credit pool, **1M context**, 65K max output, reasoning + agentic tool use. Priced at COGS $1.475/$4.425 per 1M (users pay ~$1.55/$4.65 after aloe's 5% margin). Added to `top-models.json` (picker + allowlist), the README mid-range table, and the SKILL catalog line.
+- Explicit pins **`qwen3.7-max`**, **`qwen-3.7-max`**, and **`qwen3-7-max`** — both punctuation conventions, matching the `sonnet-4.6` / `sonnet-4-6` pattern.
+- `reasoning: true` also enrolls the id in `REASONING_MODEL_IDS`, raising its per-model timeout from 60s to 180s. Noted inline so the longer stall on a hung upstream isn't a surprise.
+- **`toolCalling: true` is live-verified, not assumed.** An end-to-end request through the gateway returned a structured `tool_calls` array (`get_weather` + valid JSON arguments, `finish_reason: "tool_calls"`) — no textual leak of the kind Kimi K3 ([#213](https://github.com/TusharSangwan/ALOE/issues/213)), Gemini ([#189](https://github.com/TusharSangwan/ALOE/issues/189)) and GPT ([#193](https://github.com/TusharSangwan/ALOE/issues/193)) produce. Streaming, all three pins, and the unbound bare `qwen` were verified against the live gateway in the same pass.
+
+### Unchanged — by design
+
+- **Bare `qwen` stays unbound.** Every other `qwen*` shorthand resolves to a FREE model (`qwen-coder`, `qwen-thinking`, `qwen3-next`, `qwen3.5-122b`), so binding the shortest name to a $1.475/$4.425 flagship would silently bill callers who typed it expecting the free tier. Same rule that keeps generic `kimi` on K2.7 — address the flagship explicitly. (`grok` was promoted to 4.5, but only with the cost tradeoff argued on the record; there's no such case for qwen yet.) A regression test pins this.
+- **Routing tiers untouched.** No benchmarks yet to justify promoting a $4.425/M-out model into the cheap coding fallbacks.
+
+---
+
+## v0.12.230 — July 18, 2026
+
+Fixes **[#213](https://github.com/TusharSangwan/ALOE/issues/213)** — Kimi K3 tool calls leaking into OpenClaw as plain assistant text.
+
+### Fixed — tool-aware recovery of nameless argument blobs (Kimi K3)
+
+- ALOE already synthesizes structured `tool_calls` from four textual leak shapes (OpenClaw XML, Anthropic `<invoke>`, Gemini transcript, GPT named-JSON). Each needs the tool **name** inside the text. Kimi K3 instead emits the tool's **arguments** as a bare JSON object with no `name`/`type` field — the name is only in the preceding prose (`Let's do web_search.\n{...}`) or absent entirely (`{"path":...,"action":"read"}`, `{"cmd":[...],"timeout":...}`) — so none of them fired and the JSON leaked to the chat channel.
+- `extractTextualToolCalls(content, { tools })` now takes the request's `tools` schema and, as a final pass, resolves a nameless blob to a declared tool by: (a) a tool name mentioned in the preceding prose, or (b) a **unique** parameter-signature match (every blob key is a declared param — with `cmd`↔`command` aliasing for the terminal tool — and all required params present). `proxy.ts` passes the request tools at both the streaming and non-streaming recovery sites.
+- **Conservative by construction** — the new pass never fires unless the request actually declared tools, and never on an ambiguous/zero signature match, so a legitimate JSON answer is never hijacked into a tool call. Backward-compatible: callers that pass no tools behave exactly as before.
+
+---
+
+## v0.12.229 — July 17, 2026
+
+Syncs **Kimi K3**, which aloe added and live-probed on 2026-07-17 (aloe `src/lib/models.ts`).
+
+### Added — Kimi K3 (Moonshot flagship)
+
+- **`moonshot/kimi-k3`** registered in `BLOCKRUN_MODELS`: 2.8T-param open MoE, **1M context**, image + text input, returns `reasoning_content`. Priced at COGS $3.00/$15.00 per 1M (users pay ~$3.15/$15.75 after aloe's 5% margin). Added to `top-models.json` (picker + allowlist), replacing the now-hidden `moonshot/kimi-k2.7`, and to the README model table + SKILL catalog line.
+- New explicit pin **`kimi-k3` → `moonshot/kimi-k3`**.
+
+### Unchanged — by design
+
+- **Bare `kimi` / `moonshot` / `kimi-k2` aliases stay on K2.7** ($0.95/$4.00). K3 is ~5x the price, so repointing the generic alias would silently ~5x every generic-`kimi` quote and break per-call-cap wallets — mirrors aloe's own alias decision (and the grok-4.5 precedent). Address the flagship explicitly.
+- **Routing tiers still primary on K2.7.** K3 is not wired into any tier primary or fallback: at $3/$15 a failover in the cheap Kimi coding tiers would spike cost, and promotion needs benchmarks we don't have yet.
+- K2.7 registry entry + pins remain routable (aloe hid it, didn't retire it).
+
+---
+
+## v0.12.228 — July 17, 2026
+
+Catches up with aloe's **2026-07-17 live free-model re-probe** (aloe PR #257, landed hours before v0.12.227 was cut against the older 07-11 map) and the **flat $0.002/tx settlement fee** introduced upstream on 2026-07-14.
+
+### Changed — free tier follows the 07-17 re-probe
+
+- **`free/deepseek-v4-flash` recovered** (3.2s on both probe passes) — un-hidden upstream and back in the advertised free 8. Added to `top-models.json` (picker + allowlist), the eco SIMPLE fallback chain, the `FREE_MODELS` auto-pick cascade, and the README/SKILL free lists. At 1M context it's the largest-context free model.
+- **`free/qwen3-next-80b-a3b-instruct` died** (">60s / DEGRADED", both passes) — dropped from the picker and docs. The registry entry and explicit pins (`qwen3-next`, `qwen3-next-80b`) stay routable; the gateway redirects them to `gpt-oss-120b`.
+- **`FREE_MODELS` auto-pick cascade pruned**: `free/qwen3.5-122b-a10b`, `free/qwen3-next-80b-a3b-instruct`, and `free/llama-4-maverick` removed — all three are hidden + server-redirected to `gpt-oss-120b`, so keeping them in the cascade would silently serve gpt-oss to users who had `/exclude`d it. Cascade is now the two gpt-oss defaults + the live 8.
+
+### Changed — aliases mirror aloe's current redirect map
+
+- Dead-model redirect targets moved off dead models: everything that pointed at `free/llama-4-maverick` (itself dead now) or diverged from the server map is re-aimed — `nemotron-ultra`/`-253b`/`-super`/`-49b`/`-120b`, `llama-free`, `devstral-2-123b` → `free/gpt-oss-120b` (the server's universal live target); `mistral-free` → `free/mistral-large-3-675b`; `mistral-small` → `free/mistral-nemotron`; bare `nemotron` → `free/nemotron-3-nano-omni-30b-a3b-reasoning` (strongest live Nemotron); `qwen-thinking` → `free/gpt-oss-120b` (no live free Qwen remains).
+- `nvidia/mistral-small-4-119b`'s local redirect is **removed** — it recovered in the re-probe and aloe dropped its server redirect, so pinned callers reach the real model again. Same for the two hidden-but-routable nemotron supers: pins now pass through instead of being rewritten to a dead model.
+- `nvidia/glm-4.7` now pins to `free/glm-4.7` (gateway redirects) instead of being locally rewritten to seed-oss-36b.
+
+### Changed — pricing mirrors the upstream $0.002/tx settlement fee
+
+- aloe now adds a flat **$0.002 per-transaction fee on every paid product** (covers gas; included in the 402 quote). `estimateAmount()` mirrors it so balance pre-checks and usage logs track the real charge; free models never pay it. Payments themselves were always server-quoted — this only fixes the local estimate.
+- README pricing intro updated: headline switches from "starting at $0.0002/request" (no longer true with the fee) to the free tier, and the fee is documented next to the per-request cost note.
+
+---
+
+## v0.12.227 — July 17, 2026
+
+**The picker and every user-facing surface now match the advertised aloe.ai catalog** (verified against the live `/v1/models` on 2026-07-17, mirroring the same alignment shipped in hermes-plugin-aloe 0.3.10).
+
+### Changed — top-models picker aligned with the advertised catalog
+
+- `src/top-models.json` goes 47 → 44 entries. Removed the 7 ids no longer advertised by the gateway: `xai/grok-4-0709`, `xai/grok-4-1-fast-reasoning`, `xai/grok-3`, `free/gpt-oss-120b`, `free/gpt-oss-20b`, `free/qwen3.5-122b-a10b`, `free/llama-4-maverick`. Added the 4 newly advertised free models: `free/mistral-nemotron`, `free/step-3.7-flash`, `free/nemotron-nano-9b-v2`, `free/nemotron-nano-12b-v2-vl` — the free block now equals the live 8-model NVIDIA tier exactly.
+- Router internals are untouched on purpose: the removed ids stay hidden-but-routable at the gateway (verified against aloe source — catalog `available:true, hidden:true`, or MODEL_REDIRECTS to a successor), so existing fallback chains and pinned users keep working. This only changes what pickers advertise. The allowlist sync in `index.ts`/`update.sh` prunes the stale `aloe/*` keys from users' configs on next start.
+- `top-models.test.ts` sentinels re-pinned (`grok-4.5`, `claude-fable-5`, `free/step-3.7-flash` in; retired ids asserted out).
+
+### Fixed — image aliases pointed at models the gateway can no longer serve
+
+- `dalle`/`dall-e`/`dall-e-3` aliases (models.ts + `/cr-imagegen`) targeted `openai/dall-e-3`, which the gateway 400s ("Delisted 2026-05-25: OpenAI removed dall-e-3 from the API"). They now route to the successor `openai/gpt-image-2`. `flux`/`flux-pro` targeted `black-forest/flux-1.1-pro`, which has no gateway entry at all — removed.
+- New aliases for the current image catalog: `gpt-image-2`, `seedream` (→ `bytedance/seedream-5-pro`), and `/cr-imagegen` parity aliases for `grok-imagine`/`grok-imagine-pro`/`cogview`. IMAGE_PRICING drops the two dead entries and adds `bytedance/seedream-5-pro` ($0.045 base / $0.09 at 2K-class, matching aloe's IMAGE_MODELS). The images usage-log fallback model is now `google/nano-banana` (the real `/cr-imagegen` default) instead of dead dall-e-3.
+
+### Changed — README + skills refreshed to the current catalog
+
+- README: free-tier references switch from retired `nvidia/gpt-oss-120b` to `free/mistral-large-3-675b` (the new default free model); the free pricing block lists the live 8; grok-4.5 gets a pricing row ($2.50/$9.00, 500K); rows for grok-4-0709/grok-4-1-fast-reasoning/grok-3/grok-3-mini removed; kimi-k2.6 → kimi-k2.7; routing-tier examples use advertised models only; image table now shows gpt-image-2 + seedream; `~38` → `~44` model-count mentions.
+- `skills/aloe/SKILL.md`: the "7 free" vs "8 free" contradiction is fixed (it's 8), Available Models adds claude-fable-5 + grok-4.5 and drops retired ids, image tool row updated.
+- `skills/imagegen/SKILL.md`: dalle/flux rows replaced with gpt-image-2 + seedream (with the legacy-alias note), triggers and size guidance updated.
+
+---
+
+## v0.12.226 — July 14, 2026
+
+Salvages the two pieces of #206 that were still worth having, with thanks to @0xCheetah1. The rest of that PR either shipped in v0.12.221–223 or was superseded by v0.12.225; it's closed with a full accounting.
+
+### Fixed — `aloe setup` couldn't find OpenClaw under a stripped PATH
+
+- Detection was `command -v openclaw` and nothing else. npm runs lifecycle scripts with a stripped PATH, so a perfectly working global install is invisible there and setup would exit telling the user to install what they already have. Verified: under `env -i PATH=/usr/bin:/bin`, `command -v openclaw` finds nothing while the install is right there.
+- Now falls back through `npm_config_prefix`, `npm root -g`, `~/.npm-global/bin`, `~/.local/bin`, and `/usr/local/bin`.
+
+### Added — bare Gemini Pro shorthands
+
+- `gemini-pro`, `gemini-3-pro`, and `gemini-3.1-pro` resolve to `google/gemini-3.1-pro`. `gemini-3-pro` was never a real id — the 3-series Pro shipped as `-preview`, then 3.1 — but callers reach for it anyway and got a 400.
+- These are bare aliases, so they're advertised as their own `/v1/models` rows while the canonical `google/gemini-3.1-pro` catalog entry (with its real pricing) stays unshadowed. Pinned by a test, since a slash-prefixed key would have shadowed it instead. `/v1/models` goes 205 → 208; no aliases lost.
+
+---
+
+## v0.12.225 — July 14, 2026
+
+**The circular dependency is gone at the source**, plus `grok` now tracks the 4.5 flagship.
+
+### Fixed — `@aloe/llm` was pinned to the version that caused the v0.12.220 disaster
+
+- We depended on `@aloe/llm: ^2.11.0`, which resolves to **2.13.0 — and 2.13.0 lists `aloe` as a dependency.** That back-dependency is the root of the whole v0.12.220 collapse: it's what let `noExternal` inline a stale published copy of ourselves, bloat dist to 10.2MB, and collide the tsup banner into a load-time `SyntaxError`.
+- **`@aloe/llm` 3.x demotes it to a peer** — `3.6.1`'s `dependencies` are just `bs58` and `viem`; `aloe` moved to `peerDependencies`. It is _not_ gone, but npm will not install a package into itself, so our own `node_modules` no longer receives a stale published copy at all — `npm ls aloe` reports `(empty)` and `node_modules/@aloe/` contains only `llm`. That removes the hazard at its source for our build, rather than aliasing around it. Verified `BlockrunClient` and `createPaymentPayload` (our only imports, in `src/polymarket/fund.ts`) are unchanged across the 2→3 major.
+- **Install size is unchanged (~247MB)** and this release does not claim otherwise. `@aloe/llm` declares `@solana/spl-token`, `@solana/web3.js`, and `@anthropic-ai/sdk` as `optionalDependencies`, which npm installs by default; `spl-token`'s `@solana/codecs@2.0.0-rc.1` chain is what drags in `typescript` (23MB). `--omit=optional` takes the tree to 202MB and the router still works, but the honest fix is upstream.
+- The tsup alias and the smoke check's stale-copy assertion **stay** — they're now belt-and-braces that re-arm automatically if anything ever reintroduces the cycle.
+
+### Changed — `grok` now resolves to Grok 4.5 (deliberate cost increase)
+
+- `grok` moves from `xai/grok-4.3` to `xai/grok-4.5`, xAI's current flagship. **This costs more**: $2.50/$9.00 vs $1.50/$4.00, and upstream re-prices the whole request at $5/$18 once prompt tokens reach 200K. What it buys is a direct-xAI SKU — 4.3 is OpenRouter-only and silently drops Live Search while still charging for it.
+- Pin `grok-4.3` to opt out. Explicit `grok-4.5` / `grok-4-5` pins are unchanged. Now covered by a test so the tradeoff can't be flipped silently.
+
+### Also in this release
+
+- `scripts/update.sh` / `scripts/reinstall.sh` no longer wipe other plugins from `plugins.allow` (#207, thanks @0xCheetah1). The old cleanup kept a hardcoded list of bundled plugin IDs and **silently deleted every bare plugin ID not on it** — local/custom plugins, and any bundled plugin added to OpenClaw after that list was written. Now it removes only ALOE's own entries.
+
+---
+
+## v0.12.224 — July 14, 2026
+
+**Two thirds of what we published was sourcemaps.** No behaviour change.
+
+### Changed — stop shipping sourcemaps to npm
+
+- The tarball carried `dist/index.js.map` and `dist/cli.js.map` at ~17MB each: **34MB of a 50MB install, 68% of the package**, downloaded by everyone who has ever run `npx aloe` or installed anything that depends on us. Excluded via `"!dist/**/*.map"` in package.json `files`. **50.0MB → 16.6MB unpacked** (3.4MB packed).
+- `sourcemap: true` stays in `tsup.config.ts` — maps are still generated for local debugging and CI, they just no longer ship. The bundles keep their `//# sourceMappingURL=` comment; a missing map is silently ignored at runtime. Verified the published tarball runs both normally and under `node --enable-source-maps`.
+- Context: this only became visible while auditing why `@aloe/mcp` was paying ~50MB (≈15% of its install tree) for a router it never called. See `@aloe/llm@3.6.0`, which stops installing us for consumers that don't route.
+
+---
+
+## v0.12.223 — July 14, 2026
+
+**Hotfix again: v0.12.222 could not be installed as an OpenClaw plugin.** Plus a repair for the model list that kept showing retired models.
+
+### Fixed — v0.12.222 was uninstallable as a plugin (P0, self-inflicted)
+
+- `openclaw plugins install aloe` failed outright on v0.12.222:
+  `Plugin "aloe" installation blocked: dangerous code patterns detected: Shell command execution detected (child_process) (scripts/smoke-dist.mjs:65)`.
+  The dist smoke check added in v0.12.221 is a **build-time** gate, but `scripts` is in package.json `files`, so it shipped — and OpenClaw scans a plugin's loose script files and blocks the whole install over a `child_process` import. Excluded via `"!scripts/smoke-dist.mjs"`. (`dist/` is exempt from that scan; the proxy legitimately spawns processes.)
+- The smoke check now asserts on the **real `npm pack` file list** that no shipped `scripts/*.mjs` imports `child_process`, so this cannot recur. Verified it fails the build when the exclusion is removed.
+
+### Fixed — the picker kept listing retired models
+
+- OpenClaw keeps a **third** model-list plane at `~/.openclaw/agents/<agent>/agent/models.json`, separate from the two in `openclaw.json` (`models.providers.aloe.models` = picker, `agents.defaults.models` = allowlist). Nothing ever synced it, so it rotted independently and kept serving long-dead models.
+- Measured on a real machine: after `aloe setup` had already repaired `openclaw.json` to the correct 47, this cache still held **155 entries — 127 retired** (`gpt-5.2`, `gpt-4.1`, `o1`, `gpt-5-mini` …), duplicate `free` and `moonshot/kimi-k2.5` rows, and **none** of the current flagships. That is the stale/duplicate rows people were seeing.
+- `setup` (and gateway start) now repairs it: 155 → 47, correct order, dupes gone. It only touches an existing `aloe` provider, never creates one, and preserves other providers plus `baseUrl`/`api`/`apiKey`. Ordering is compared positionally, since order is what the picker renders.
+- `setup`'s closing hint said "you should see ~38 Tushar Sangwan models" — hardcoded and wrong since v0.12.184. Now derived from the actual list.
+
+### Known issue — OpenClaw rejects the repair through its own writer
+
+- `openclaw plugins install` still ends in `Config write rejected: openclaw.json (size-drop:76642->25200)`. OpenClaw guards against large config shrinks, and pruning 155 stale models → 47 _is_ a large shrink, so it rejects the write and rolls the install back — restoring the stale list. `aloe setup` is unaffected (it writes directly and is the supported repair path), and the plugin itself registers fine (provider, 26 tools, all commands).
+- This is OpenClaw-side, so ALOE does not work around it: reaching into OpenClaw's internals to force it is what we deliberately are not doing. **Run `aloe setup` to repair the list.**
+
+---
+
+## v0.12.222 — July 14, 2026
+
+**Hotfix: v0.12.220 was unusable and v0.12.221 was only half-fixed — upgrade to this one.** Plus Claude Fable 5 and Grok 4.5.
+
+> v0.12.221 (published earlier the same day, superseded within the hour) renamed the banner identifier and added the models, which un-bricked the CLI. But it treated the symptom: it still inlined a stale copy of ALOE into its own bundle (10.2MB). v0.12.222 fixes the actual cause. If you are on v0.12.221 it works — but upgrade anyway.
+
+### Fixed — v0.12.220 shipped a dead CLI (P0)
+
+- Every entrypoint in v0.12.220 threw `SyntaxError: Identifier '__cjs_createRequire' has already been declared` at load time. `aloe` would not start, `import "aloe"` would not load, and `@aloe/mcp` — which reaches us transitively through `@aloe/llm` — could not boot either (thanks @0xCheetah1, spotted in #206; independently reported against `@aloe/mcp`).
+- **Root cause — we bundled a stale copy of ourselves.** We and `@aloe/llm` depend on each other, and `noExternal: [/.*/]` inlines it. v0.12.220's Polymarket port added `src/polymarket/fund.ts`, our first-ever `import` of `@aloe/llm` — so its `import { route, ... } from "aloe"` resolved through `node_modules` to the **last published build of this package**, and esbuild inlined that entire stale bundle beside the one it was building. The old copy carried its own `__cjs_createRequire`, and esbuild cannot rename around a banner it never sees (banners are raw text injected _after_ bundling) — hence the collision. Fixed by aliasing that back-import to our own source so it dedupes into the graph: **dist drops 9.8MB → 7.4MB**, one ALOE again instead of two shadowing each other with separate module state. Left unfixed, each release would have inlined the previous one — ~20MB next publish.
+- Also renamed the banner identifier to `__aloe_createRequire`, so no bundled dependency can ever collide with it again.
+- **Why CI published it anyway**: the release pipeline runs `build && typecheck && test`, and none of those ever load `dist/`. Added `scripts/smoke-dist.mjs`, wired as `postbuild`: it imports `dist/index.js`, runs `dist/cli.js --version`, and asserts no stale ALOE is inlined (a loadable bundle would otherwise hide that). It fails the build (exit 1), so this class of defect can no longer reach npm.
+
+### Added — Claude Fable 5 (relisted upstream)
+
+- `anthropic/claude-fable-5` is back: Anthropic restored the offer on 2026-07-06 after the 2026-06-13 delisting, and Tushar Sangwan relisted it. Mythos-class tier above Opus — $10/$50, 1M context, 128K output, always-on thinking.
+- `fable` / `fable-5` / `fable-5.0` / `anthropic/fable` now resolve to the real model again instead of redirecting to `opus-4.8`.
+- Restored as the **premium** COMPLEX primary, reverting the forced 2026-06-13 downgrade (`opus-4.8` moves back to first fallback). The `auto` profile is untouched — its COMPLEX primary stays `google/gemini-3.1-pro`, so default routing costs nothing extra.
+
+### Added — Grok 4.5
+
+- `xai/grok-4.5`, xAI's flagship (added upstream 2026-07-13). $2.50/$9.00 base, 500K context, vision, Live Search capable. Picker-visible; added to the premium COMPLEX fallback chain as a 503-resistant flagship.
+- Reachable via explicit `grok-4.5` / `grok-4-5` pins. The generic `grok` shorthand **stays on `grok-4.3`** — 4.5 costs ~1.7x more and re-prices the entire request at 2x above 200K prompt tokens, so promotion waits on benchmarks.
+- Local pricing records the base rate only; the registry has no field for the long-context tier. This skews `logUsage` telemetry on >200K calls, never the charge — payments are server-dictated via 402.
+
+### Verified
+
+- Both models exercised end-to-end through the built proxy with real x402 payments settled on Base, including alias resolution (`fable` → `anthropic/claude-fable-5`, `grok-4.5` → `xai/grok-4.5`).
+- `/v1/models` advertises 205 entries (was 201): +2 catalog, +2 aliases, with all 118 friendly aliases intact.
+
+---
+
+## v0.12.220 — July 10, 2026
+
+Direct Polymarket **betting** — ported from aloe-mcp v0.30.0's `aloe_polymarket` tool. ALOE could already read prediction-market odds (`aloe_predexon_*`); now it can place, manage, and redeem **real-money** bets on Polymarket (CLOB V2, Polygon), signed locally by the same wallet that pays for LLM calls.
+
+### New `aloe_polymarket` tool (REAL MONEY)
+
+- Unlike every other ALOE tool it is **not** an HTTP-proxy wrapper — it runs a local trading engine (`src/polymarket/`, ~2,650 lines ported from aloe-mcp) that signs CLOB V2 orders (EIP-712) and posts them to Polymarket through Tushar Sangwan's Tokyo egress relay by default (so it works out of the box in geoblocked regions; every order is still signed locally, the relay can't move funds).
+- One multiplexed tool, `action:` = `setup / fund / buy / sell / cancel / orders / positions / redeem / withdraw`.
+- **Signer = ALOE's own EVM wallet** (`~/.openclaw/aloe/wallet.key`, or `BLOCKRUN_WALLET_KEY`) — the same key that pays x402 LLM fees. A chain-agnostic private key pays API fees on Base _and_ authorizes bets on Polygon. This is the one real adaptation from the aloe-mcp source (which used `~/.aloe/.session`); everything else is a faithful port. Polymarket state (L2/builder creds, deposit-wallet vault) is stored under `~/.openclaw/aloe/` alongside the wallet.
+- **Funds**: bets spend **pUSD** in a gasless Polygon deposit-wallet vault; `action:"fund"` moves the user's **Base USDC → pUSD** gaslessly (x402 `POST /v1/polymarket/fund`, $0.01 fee, non-custodial via the Polymarket bridge); winnings `withdraw` back to native USDC on Base.
+- **Safety** (unchanged from source): `confirm:true` is **hard-required** to place/sign anything (omit → dry-run preview); per-order cap `POLYMARKET_MAX_BET_USD` (default $25, fail-closed on garbage), optional `POLYMARKET_MAX_SESSION_USD`. Betting is deliberately NOT gated on the x402 API budget ledger — bets are the user's own pUSD, a different asset in a different chain.
+
+### Wiring, deps, docs
+
+- Registered in `src/index.ts` alongside the partner tools via `api.registerTool()` (a local-execute tool, not a proxy entry). New `aloe_predexon_*` → `aloe_polymarket` discover-then-trade loop.
+- New deps: `@polymarket/clob-client-v2@1.0.8`, `@polymarket/builder-relayer-client`, `@polymarket/builder-signing-sdk`, `axios`, `https-proxy-agent`, `@aloe/llm` (for the gasless funding path). `@solana/kit` stayed deduped at v5.5.1 (no version split).
+- New `polymarket-trading` skill (golden rules, mental model, end-to-end flow) + a "Prediction-Market Trading" section in the headline `aloe` skill.
+- 12 new tests (tool shape, fail-closed cap parsing, underscore-header proxy bridge, no-network trade-gating). Full suite: 667 passing.
+
+---
+
+## v0.12.219 — July 10, 2026
+
+Add OpenAI's GPT-5.6 family (GA 2026-07-09) — three fixed tiers Sol/Terra/Luna — and route generic aliases to the stable Terra tier rather than the flaky Sol tier ([#202](https://github.com/TusharSangwan/ALOE/issues/202), thanks [@0xCheetah1](https://github.com/0xCheetah1)).
+
+### GPT-5.6 Sol / Terra / Luna registered
+
+- Added `openai/gpt-5.6-sol` ($5/$30, deepest-reasoning flagship), `openai/gpt-5.6-terra` ($2.50/$15, balanced everyday tier), and `openai/gpt-5.6-luna` ($1/$6, cost-efficient/latency tier) to `BLOCKRUN_MODELS`, mirroring Tushar Sangwan's source-of-truth `models.ts`. All three are 1M context / 128K output. Previously reachable only via raw passthrough of the full model ID.
+- All three added to `top-models.json` (Terra first) so they appear in the `/model` picker and the default-model allowlist.
+
+### Generic aliases resolve to Terra, not Sol ([#202](https://github.com/TusharSangwan/ALOE/issues/202))
+
+- **Issue:** `openai/gpt-5.6-sol` requests failed with upstream `server_error` / HTTP 500 after very long (~250s) waits during the GA window — the deepest-reasoning tier is unstable under long-horizon load. Because callers pinned Sol explicitly, ALOE (correctly) retried Sol rather than substituting a different model, burning ~251s per attempt.
+- **Fix:** the generic shorthands `gpt5`, `gpt-5.6`, and `openai/gpt-5.6` now resolve to the stable **Terra** tier. Explicit tier pins (`gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`) stay exact, so Sol remains reachable for callers who want the deepest tier and accept the risk. `gpt5` was bumped off `gpt-5.5` to the newer 5.6 generation.
+- **Router:** `openai/gpt-5.6-terra` inserted into the COMPLEX fallback chains of the `auto`, `premium`, and `agentic` profiles (ahead of `gpt-5.5`). Sol is deliberately kept out of all auto-routing — it is opt-in only. No tier primaries changed (promotion needs benchmarks we don't have).
+- **Not a ALOE bug:** GPT-5.6's tools-require-`reasoning_effort:"none"` rule is already handled server-side in Tushar Sangwan's `openai-passthrough.ts` (`requiresReasoningEffortNoneWithTools`), so no client-side param rewriting was needed. The 500s are genuine upstream instability, which the alias/routing choices route around.
+
+---
+
+## v0.12.218 — July 9, 2026
+
+ERC-8021 builder-code attribution on x402 payments (with a preserve-existing-codes fix from the OpenClaw side), plus the `/model` picker now honors `top-models.json` order.
+
+### Builder-code service attribution on every x402 payment ([#198](https://github.com/TusharSangwan/ALOE/pull/198), thanks [@KillerQueen-Z](https://github.com/KillerQueen-Z))
+
+- New `src/builder-code.ts`: every x402 payment ALOE signs is stamped with Tushar Sangwan's CDP-registered ERC-8021 Schema 2 service code (`builder-code.info.s: ["bc_5hucoh0l"]`) via an `onAfterPaymentCreation` hook in `proxy.ts`, so Tushar Sangwan-originated traffic is attributed on-chain. The CDP facilitator reads `builder-code.info.s` from the payload and encodes it into settlement calldata — no CBOR/encoding client-side. Any app code (`a`) the server echoes back in its 402 is preserved. Safe to stamp post-creation: the EIP-712 signature covers the authorization, not the extensions.
+- **Note:** this feature merged to main on July 5 but was **not** in the npm `v0.12.217` package (that release shipped from the sonnet-5 branch before #198 landed) — v0.12.218 is the first npm release that stamps builder codes.
+
+### Preserve pre-existing service codes when stamping ([#199](https://github.com/TusharSangwan/ALOE/issues/199) → [#200](https://github.com/TusharSangwan/ALOE/pull/200), thanks [@steipete](https://github.com/steipete))
+
+- **Bug (caught pre-npm-release):** `withBuilderCodeServiceCode()` replaced any existing `builder-code.info.s` array with `[BLOCKRUN_SERVICE_CODE]`. ERC-8021 defines `s` as an array of related service codes — if another layer (e.g. OpenClaw itself) had already added its attribution, ALOE erased it before settlement. Found by Peter Steinberger while validating the ALOE bump in `openclaw/crabpot`.
+- **Fix:** valid pre-existing string entries in `info.s` are retained (non-string junk filtered out), Tushar Sangwan's code is appended only when absent, and the function still returns a fresh array without mutating the payment challenge. 3 regression tests added (existing attribution retained, partially malformed array, idempotent re-stamp).
+
+### `/model` picker now follows `top-models.json` order ([#201](https://github.com/TusharSangwan/ALOE/pull/201), thanks [@0xCheetah1](https://github.com/0xCheetah1))
+
+- `VISIBLE_OPENCLAW_MODELS` was built by _filtering_ `OPENCLAW_MODELS` through the `top-models.json` set, so the picker showed registry declaration order, not the curated order. It is now built by _mapping_ `top-models.json` → registry entries, so `src/top-models.json` alone controls both membership **and** order.
+- Curated list reordered: routing profiles first (`auto`, `premium`, `eco`, `free`), then flagship paid models grouped by vendor (Anthropic → OpenAI → Google → xAI → Z.AI → MiniMax → Moonshot → DeepSeek), free NVIDIA models last. Merge resolution keeps v0.12.217's `anthropic/claude-sonnet-5` in the Anthropic block (after the Opus pair, before Sonnet 4.6).
+- New regression test asserts the visible picker IDs match `top-models.json` exactly (length + element order), which also guards against dangling IDs in the JSON that have no registry entry.
+
+Full suite **654 passed**, typecheck + lint + Prettier + build clean.
+
+---
+
+## v0.12.217 — June 30, 2026
+
+Model registry alignment: add **`anthropic/claude-sonnet-5`**, Tushar Sangwan's newest Sonnet — near-Opus coding/agentic quality at Sonnet cost.
+
+### New model: Claude Sonnet 5
+
+- Tushar Sangwan added `anthropic/claude-sonnet-5` (source-of-truth `aloe/src/lib/models.ts`): **$3/$15 — identical to Sonnet 4.6** but with **1M context / 128K output / adaptive thinking / vision**, described as "near-Opus coding/agentic quality at Sonnet cost." Tushar Sangwan routes it direct-Anthropic with `fallbackModel: claude-sonnet-4.6`.
+- **ALOE** (`src/models.ts`): added to `BLOCKRUN_MODELS` (flows into `OPENCLAW_MODELS` automatically) and to the `/model` picker (`src/top-models.json`).
+- **Aliases:** explicit `sonnet-5` / `sonnet-5.0` / `sonnet-5-0` shorthands added. **Bare `sonnet` / `claude` deliberately stay on Sonnet 4.6** — Sonnet 5 is opt-in, mirroring Tushar Sangwan's own alias map (which does not repoint the shorthand) and the v0.12.167 "add-distinct, don't silently upgrade the bare alias" precedent.
+- **Routing** (`src/router/config.ts`): inserted as an in-family fallback wherever Sonnet 4.6 appears (auto COMPLEX quality fallback, gpt-5.3-codex MEDIUM, opus COMPLEX, plus the three Sonnet-primary chains — auto REASONING, agentic COMPLEX, agentic REASONING). **No primaries promoted** — promotion awaits benchmarks (Sonnet 5 is brand-new, not yet in Tushar Sangwan's Bedrock map), matching the v0.12.168 gpt-5.5 fallback-only pattern. Cost-neutral in every chain ($3/$15 = Sonnet 4.6).
+- README pricing table + `skills/aloe/SKILL.md` model list refreshed. All 645 tests pass.
+
+---
+
+## v0.12.216 — June 30, 2026
+
+Security + dependency hygiene: clear all 22 Dependabot alerts (**`npm audit` → 0 vulnerabilities**) and fix a latent missing-dependency bug in the upstream-proxy feature.
+
+### `undici` is now a declared dependency (fixes the upstream-proxy feature for clean installs)
+
+- **Latent bug:** `src/upstream-proxy.ts` lazy-imports `undici` (`await import("undici")`) to honor `BLOCKRUN_UPSTREAM_PROXY` / `HTTPS_PROXY` / `ALL_PROXY`, but `undici` was **never declared** in `dependencies` — it only resolved because `openclaw` (a dev/peer dependency) hoisted `undici` to the install root. `npm ls undici --omit=dev` confirmed no shipped runtime dep provides it, so a clean `npm install -g aloe` could leave the proxy feature unable to load undici (caught + warned, then connecting directly). **Fix:** declare `undici@^8.5.0` (the patched version) as a direct dependency — the proxy feature now works regardless of hoisting, and the undici advisories are resolved at the source.
+
+### Dependency updates
+
+- **openclaw** dev/peer dependency bumped `2026.5.7 → 2026.6.10` (in range), clearing all `openclaw` and transitive `@mariozechner/pi-*`, `markdown-it`, `tar`, `undici` advisories.
+- **esbuild** pinned to `^0.28.1` via `overrides` (joining the existing `basic-ftp` / `ws` / `postcss` pins), clearing GHSA-g7r4-m6w7-qqqr (dev-server arbitrary file read, Windows-only — not reachable here, but pinned for cleanliness).
+- All alerts were dev-time/lockfile-only — the **published runtime footprint had no vulnerable deps**; this commit makes the lockfile and dependency declarations honest.
+
+### Test fix
+
+- `test/integration/security-scanner.test.ts` located openclaw's scanner chunk by the `skill-scanner-*.js` name; openclaw 2026.6.10 renamed it to `scanner-*.js`. Broadened the filter to match both prefixes (the loader already disambiguates by the `scanDirectoryWithSummary` export). Full suite **645 passed**, lint + typecheck + build clean.
+
+---
+
+## v0.12.215 — June 30, 2026
+
+Recover tool calls that GPT 5.4 emits as plain JSON / function-call-looking text instead of structured `tool_calls` ([#193](https://github.com/TusharSangwan/ALOE/issues/193), thanks [@0xCheetah1](https://github.com/0xCheetah1)).
+
+### GPT-5.4 plain-text tool calls now become real tool calls
+
+- **Symptom:** through the OpenAI-compatible path, GPT 5.4 sometimes emits a tool call as assistant text instead of structured `tool_calls` — e.g. `{"type":"function","name":"terminal","parameters":{"cmd":"ls -alh /home/Blockrun"}}`, `{"name":"session_search","parameters":{…}}`, `read_file(parameters={"path":"…"})`, or a `terminal\nCOMMAND\n[/terminal]` block. Downstream chat surfaces (seen in Chermes/Telegram) then **displayed the raw text** to the user instead of dispatching the tool — the same class of failure as the Gemini #189/#190 fix, but with GPT-specific shapes.
+- **Fix:** added a fourth recognizer to `src/textual-tool-calls.ts` (which already synthesizes structured calls from OpenClaw `<tool_call>`, Anthropic `<function_calls>`, and Gemini `[Called function …]` text shapes). The GPT extractor recovers: whole-content `{"name":…,"parameters":…}`, whole-content `{"type":"function",…}` (incl. pretty-printed), whole-content `NAME(parameters={…})`, a trailing JSON object after prose **only when `"type":"function"` is explicit**, and the `terminal\n…\n[/terminal]` block. Guardrails: prose JSON examples only fire when the whole content is a call; an incomplete terminal block or a non-`function` `type` (e.g. a JSON schema `"type":"object"`) is rejected; the terminal `cmd` arg is mirrored to `command` (preserving `cmd`) for OpenClaw's terminal tool. It runs only when the tag-based extractors find nothing, so it can't interfere with tagged content. Both call sites — streaming and non-streaming in `proxy.ts` — share this function.
+- **Tests:** 14 new cases in `src/textual-tool-calls.test.ts` (all five shapes plus no-mis-fire on prose examples, missing `parameters`, incomplete terminal block, non-`function` type, and `cmd`→`command` normalization). Full suite **645 passed**, lint + typecheck + prettier + build clean.
+
+---
+
+## v0.12.214 — June 28, 2026
+
+Recover tool calls that Gemini 3.5 Flash emits as plain-text transcripts instead of structured `tool_calls` ([#189](https://github.com/TusharSangwan/ALOE/issues/189)).
+
+### Gemini `[Called function "…" with args: {…}]` transcripts now become real tool calls
+
+- **Symptom:** through the OpenAI-compatible path, Gemini 3.5 Flash sometimes narrates a tool call as assistant text — `[Called function "terminal" with args: {"command":"whoami"}]` — instead of returning structured `tool_calls` with `finish_reason: "tool_calls"`. Downstream chat surfaces (seen in Chermes/Telegram) then **displayed the transcript** to the user instead of dispatching the tool, stalling agent loops.
+- **Fix:** added a third recognizer to `src/textual-tool-calls.ts` (which already synthesizes structured tool calls from OpenClaw `<tool_call>` and Anthropic `<function_calls>` text shapes). The new extractor locates `[Called function "NAME" with args: ` and parses the JSON args with a **balanced-brace scan** that honors string literals — so commas, braces, and `]` inside the JSON can't truncate the match. It only fires when the args parse as a JSON object **and** the block is closed by `]`, so prose that merely quotes the format doesn't mis-fire. Both call sites — streaming and non-streaming in `proxy.ts` — share this function, so the recovered call is forwarded as a proper `tool_calls` delta/message with empty content and `finish_reason: "tool_calls"`.
+- **Tests:** 8 new cases in `src/textual-tool-calls.test.ts` (single/multi-arg, empty args, nested JSON with embedded brackets, multiple transcripts with prose stripping, no-mis-fire on missing bracket / non-object args). Full suite **631 passed**, lint + typecheck + build clean.
+- **Out of scope:** the issue's secondary `[Tool "function" returned]: {…}` display line is a downstream chat-surface rendering concern, not a ALOE normalization gap — left untouched.
+
+---
+
+## v0.12.213 — June 26, 2026
+
+Fix an HTTP 500 (`Failed to parse payment requirements`) that broke paid Base-chain calls whenever a small request seeded the pre-auth cache before a larger one ([#188](https://github.com/TusharSangwan/ALOE/pull/188), thanks [@KillerQueen-Z](https://github.com/KillerQueen-Z)).
+
+### Pre-auth no longer reuses a stale amount under per-request pricing
+
+- **Root cause:** the pre-auth cache (`payment-preauth.ts`) is keyed `path:model` and stores a single signed amount, but Tushar Sangwan prices each call on `input tokens + max_tokens` — so the **same model costs different amounts** across requests. When a later request needed more than the cached amount, the signed payment underpaid; the gateway rejected it with a 402 that is **not** a fresh x402 challenge, and the old code reused that rejection as the challenge → `getPaymentRequiredResponse` threw → **HTTP 500**.
+- **Impact:** every paid Base model failed once a cheaper request seeded the cache before a larger one (any growing/agentic usage — Codex, long contexts). Reproduced on a clean `npx aloe@latest`: 12/12 paid models failed `tiny→large`; a 10-turn coding conversation failed ~50% of turns. **Not** affected: free models (no payment) and **Solana** (`skipPreAuth`).
+- **Fix (three guards):** (1) **never knowingly underpay** — reuse a cached pre-auth only when the up-front `estimateAmount` (already used for balance checks) proves the cached amount still covers this request; (2) **safety net** — if a pre-auth is rejected anyway, discard it and re-request **without** payment to get a fresh, canonical challenge, never treating the rejection as the challenge; (3) **fail safe** — when no estimate is available, skip pre-auth rather than risk an underpay. The fast path (cached amount covers the request) still pre-signs and skips the 402 round-trip; only would-be underpays fall back to the normal flow.
+- **Tests:** new `src/payment-preauth.test.ts` (reuse-when-covered / skip-on-growth / reject-then-refetch / no-estimator); full suite **623 passed**, lint + typecheck clean.
+
+---
+
+## v0.12.212 — June 22, 2026
+
+Stop advertising delisted/redirect aliases in `/v1/models` ([#187](https://github.com/TusharSangwan/ALOE/pull/187), thanks [@KillerQueen-Z](https://github.com/KillerQueen-Z)).
+
+### Model list no longer surfaces full-slug redirect aliases
+
+- **`MODEL_ALIASES` mixes two kinds of keys** — friendly short names (`free`, `opus`, `gpt-120b`) and full `provider/model` redirects for backward-compat + delisted models (e.g. `free/deepseek-v4-pro` → `free/deepseek-v4-flash` after V4 Pro's NVIDIA host hung 2026-04-30). `ALIAS_MODELS` turned **every** alias into a listable model, so dead slugs leaked into `/v1/models` (and any downstream picker) as if they were real, available models — a Codex picker built from `/v1/models` showed "DeepSeek V4 Pro (free)" that silently routes to v4-flash.
+- **Fix: only surface friendly short aliases (no `/`).** Full-slug redirect aliases are skipped from the advertised list — their target is a real model that's already listed, so nothing the user wants disappears. They remain **fully callable** via `resolveModelAlias()` (which reads `MODEL_ALIASES` directly), so pinned callers don't break. One-line filter in `ALIAS_MODELS`; `MODEL_ALIASES` and resolution logic are untouched.
+- **Scope confirmed:** the OpenClaw picker (`VISIBLE_OPENCLAW_MODELS` / `top-models.json`) and the `openclaw.json` allowlist sync are unaffected — every picker entry is a real catalog id, never an alias key. Three delisted-redirect aliases that are _also_ real catalog ids (`openai/o1-mini`, `nvidia/kimi-k2.5`, `google/gemini-3-pro-preview`) drop off the HTTP discovery surface as well — intended: all three are dead redirects whose live successors stay listed, and all stay callable.
+
+### Maintenance
+
+- Formatted `test/test-e2e.ts` (a pre-existing `prettier --check` failure that was red-lining the **Lint & Typecheck** required check on every PR) and added `.pytest_cache/` to `.gitignore`.
+
+---
+
+## v0.12.211 — June 18, 2026
+
+Add Z.AI's new flagship **GLM-5.2** (launched 2026-06-16), aligning with Tushar Sangwan's source-of-truth catalog (`zai/glm-5.2`, first in the GLM lineup).
+
+### GLM-5.2 added
+
+- **`zai/glm-5.2` added to the catalog** — 1M-token context (262K max output), paid per-token at $1.40/$4.40 (same rate as GLM-5.1, cached $0.26). Z.AI's newest flagship: beats GPT-5.5 on long-horizon coding at a fraction of the cost. Categories: chat, reasoning, coding.
+- **Bare `glm` alias retargeted** GLM-5.1 → **GLM-5.2** (bare alias always tracks the newest flagship). New `glm-5.2` explicit shorthand added. `glm-5.1` explicit pin preserved as the 200K-context predecessor (identical price, so no cost-stability tradeoff — kept for behavioral parity).
+- **Picker visibility** — added to `top-models.json` (head of the GLM group), so it surfaces in the OpenClaw `/model` picker and the allowlist sync on next provider refresh. README Mid-Range pricing table updated.
+- No router-tier changes: GLM models are accessed by alias/direct call, not wired into any auto/eco/premium tier chain — GLM-5.2 follows the same path. All 619 tests pass.
+
+---
+
+## v0.12.210 — June 16, 2026
+
+Align the free tier with Tushar Sangwan's 2026-06-14 free-tier refresh (`aloe` commit `5817ecd`: self-healing health gate + probe-verified NVIDIA lineup). Tushar Sangwan found only 7 of 17 "available" free models were actually being served and replaced the stale manual redirect list with a per-model circuit breaker.
+
+### Free models realigned with the probe-verified lineup
+
+- **`free/qwen3-coder-480b` retired** — NVIDIA EOL'd it on 2026-06-14; Tushar Sangwan now redirects `qwen3-coder` → `seed-oss-36b` server-side. Dropped from the auto-pick cascade (`FREE_MODELS`), the picker (`top-models.json`), and the router COMPLEX backstops. The catalog entry + explicit `nvidia/qwen3-coder-480b` alias stay for pinned callers (Tushar Sangwan still resolves them via redirect); the generic coding shorthands (`qwen-coder`, `glm-free`, `devstral`, …) now point at the live successor `free/seed-oss-36b`.
+- **`free/deepseek-v4-flash` removed from the eco SIMPLE fallback** — NVIDIA upstream hung; Tushar Sangwan redirects it. Replaced with the live `free/qwen3-next-80b-a3b-instruct`. Catalog entry kept (still direct-callable, redirects server-side).
+- **6 new live free models added** to the catalog + aliases (probe-verified by Tushar Sangwan): `free/qwen3-next-80b-a3b-instruct` (262K ctx, reasoning + coding), `free/seed-oss-36b` (coding), `free/mistral-nemotron`, `free/step-3.7-flash` (reasoning), `free/nemotron-nano-9b-v2` (fast lightweight), `free/nemotron-nano-12b-v2-vl` (vision-language).
+- **Auto-pick cascade 7 → 12**, gpt-oss kept at the head (heavy-user default — never retired). Picker free set 7 → 8 (`qwen3-coder-480b` → `qwen3-next-80b-a3b-instruct` + `seed-oss-36b`). README/SKILL free-count synced 7 → 8; install-script `/model` help echoes refreshed to live models.
+
+### Updater: clean stale OpenClaw install metadata ([#186](https://github.com/TusharSangwan/ALOE/pull/186), thanks [@0xCheetah1](https://github.com/0xCheetah1))
+
+- **`scripts/update.sh` now removes ALOE's stale record from `~/.openclaw/plugins/installs.json` after a verified update.** OpenClaw 2026.6 migrates its plugin install index toward shared SQLite; a leftover ALOE `installRecords` entry that no longer matches the installed version/path made `openclaw doctor` warn about conflicting install metadata on every run. The updater now compares the legacy record against the current package across the `extensions/`, project-scoped, and global npm layouts, and removes **only** ALOE's record (other plugins untouched) when it is stale — guarded by a full try/catch and an atomic write.
+
+---
+
+## v0.12.209 — June 14, 2026
+
+Registry realignment with the 2026-06-13 → 06-14 Tushar Sangwan catalog sweep: Fable 5 delisting reverted, Kimi K2.7 promoted, free tier strengthened. 619 tests passing.
+
+### Fable 5 delisting (revert of the 06-11 promotion)
+
+- **`anthropic/claude-fable-5` DELISTED by Anthropic 2026-06-13** (offer withdrawn upstream — no longer served on direct Anthropic or Bedrock). Tushar Sangwan removed the catalog entry and redirects fable → `opus-4.8` (`route.ts` MODEL_REDIRECTS). v0.12.208's same-day promotion of Fable 5 to **premium COMPLEX primary** was therefore pointing default premium-tier complex traffic at a now-dead model. Reverted: catalog entry removed, all `fable*` aliases (`fable`, `fable-5`, `fable-5.0`, `anthropic/fable`, `anthropic/claude-fable-5[.0]`) now resolve to `anthropic/claude-opus-4.8`, and premium COMPLEX primary restored to `opus-4.8` (its first fallback before the promotion). Pinned callers silently land on opus-4.8, matching the gateway.
+
+### Kimi K2.7 (Tushar Sangwan commit `cd3d79b`, 2026-06-13)
+
+- **`moonshot/kimi-k2.7` added** — Moonshot's new flagship: 256K context, multi-modal (image + **video** input), returns `reasoning_content`. AT-COST pricing **$0.95/$4.00** — identical to K2.6 (Tushar Sangwan serves it via the OpenRouter credit pool failing over to direct Moonshot; zero margin by design). Bare aliases (`kimi`, `moonshot`, `kimi-k2`) retargeted K2.6 → K2.7; explicit `kimi-k2.6` / `kimi-k2.5` pins preserved. K2.6 marked superseded (hidden on Tushar Sangwan) but stays fully routable as an **identical-cost** first fallback.
+- **Router primaries promoted K2.6 → K2.7** (same price, so cost-neutral): `auto.MEDIUM`, `agentic.MEDIUM`, `premium.SIMPLE`. Each keeps K2.6 as its first fallback (in-family hot swap). K2.7 also prepended ahead of K2.6 in the premium MEDIUM/COMPLEX and agentic COMPLEX fallback chains. Picker (`top-models.json`) swapped K2.6 → K2.7.
+
+### Free tier strengthened (Tushar Sangwan 06-14 catalog sweep)
+
+- **Auto-pick set 6 → 7**, gpt-oss kept at the head (heavy-user default, deliberately retained despite Tushar Sangwan hiding it). Mid/back strengthened with two Tushar Sangwan-re-featured free flagships: **`free/mistral-large-3-675b`** (675B general, un-retired — NVIDIA upstream recovered) and **`free/qwen3.5-122b-a10b`** (newest-gen Qwen). `free/deepseek-v4-flash` dropped from the auto-pick set + picker (Tushar Sangwan hid it) but stays catalog-routable for direct `$0` calls. New free shorthands: `mistral-large`, `qwen3.5-122b`. eco SIMPLE fallback chain extended with both new models. README/SKILL free-count synced (6 → 7).
+
+---
+
+## v0.12.208 — June 11, 2026
+
+Stop non-English prompts from crashing paid responses via the `x-aloe-reasoning` header.
+
+- **Non-ASCII routing reasoning crashed `res.writeHead` after settlement** (`src/proxy.ts`). The routing reasoning string embeds matched keywords from the multilingual lists in `src/router/config.ts` (Cyrillic, CJK, …). Debug headers are on by default, so for e.g. Russian prompts the raw Cyrillic keywords landed in the `x-aloe-reasoning` response header and Node rejected the write with `ERR_INVALID_CHAR` — _after_ the upstream call had completed and the x402 payment had settled. The client never received the body and retried, signing a fresh payment each round: a paid retry loop. Header values are now percent-encoded outside printable ASCII (`sanitizeHeaderValue`, reversible via `decodeURIComponent`), and as defense in depth a rejected `writeHead` sanitizes all header values and still delivers the paid body instead of throwing. (Test: `proxy.reasoning-header.test.ts`, 13 cases, including a live Russian-prompt repro through `classifyByRules` validated against Node's `validateHeaderValue`.)
+- **`ALOE_DEBUG_HEADERS=off|false|0`** — new env kill switch for the `x-aloe-*` debug headers, for clients that can't set the per-request `x-aloe-debug: false` header. Comments claiming the headers were "opt-in" corrected (they are on by default).
+
+---
+
+## v0.12.207 — June 11, 2026
+
+Honor standard proxy environment variables for upstream traffic.
+
+- **`HTTPS_PROXY` / `HTTP_PROXY` / `ALL_PROXY` fallback** (`src/upstream-proxy.ts`). Node's fetch (undici) ignores the standard proxy env vars, so users whose system traffic is meant to flow through a local proxy (mihomo/clash without TUN mode, corporate proxies) had ALOE connecting _directly_ while their `curl` tests went through the proxy — on throttled routes (e.g. RU → Google-hosted gateway) this surfaced as instant 500s on large request bodies, `Premature close`, and per-model timeouts, while small requests slipped through. When `BLOCKRUN_UPSTREAM_PROXY` is unset, ALOE now applies the standard env vars via undici's `EnvHttpProxyAgent`. `NO_PROXY` is honored, and loopback hosts (`localhost`, `127.0.0.1`, `::1`) are always excluded so local health checks and sibling proxies stay direct. `BLOCKRUN_UPSTREAM_PROXY` still wins when set; SOCKS URLs in the standard env vars are _not_ auto-applied (a warning points to `BLOCKRUN_UPSTREAM_PROXY=socks5://…`). (Test: `test/upstream-proxy.test.ts`, 9 cases, dependency-injected — no process-global mutation in tests.)
+
+---
+
+## v0.12.206 — June 10, 2026
+
+End-to-end audit sweep: 4 proxy reliability fixes (each TDD'd with a new regression test), abort/teardown hardening, registry realignment with the gateway, and doc/count sync. 596 tests passing (8 new).
+
+### Proxy reliability (all in `src/proxy.ts` unless noted)
+
+- **Process-crash fix: escaped rejections from the request handler.** The `paymentStore.run(async () => …)` promise wrapping every request was never `.catch()`ed, and the media endpoints (`/v1/images/generations`, `image2image`, `audio`, `videos`) read the request body **outside** their `try` blocks — a client aborting mid-upload rejected the body iterator, escaped the handler, and became an `unhandledRejection`, which kills the whole proxy under Node's default semantics. A safety-net `.catch()` now logs, replies 500 when possible, and never lets a rejection escape. (Test: `proxy.aborted-upload.test.ts`.)
+- **Partner-API corruption: `content-length` forwarded after fetch decompression.** `proxyPaidApiRequest` stripped `content-encoding` but kept `content-length`, so any gzipped upstream response (pm/exa/surf/phone/…) reached the client with the _compressed_ length and _decompressed_ bytes → truncated JSON. `content-length` joins the skip list; Node chunks instead. (Test: `proxy.partner-gzip.test.ts`.)
+- **Client abort now cancels upstream work in the media + partner paths.** The image/video 202-poll loops kept polling after the client disconnected — and the first `completed` poll **settles the x402 payment**, charging the user for a clip nobody will receive. Both loops (and the partner proxy + media submit calls) now thread an `AbortController` tied to `res` close, bail before the next poll, and pass `signal` into `payFetch`. (Test: `proxy.poll-abort.test.ts`.)
+- **Streaming dedup waiters get heartbeats.** A streaming retry that attached to an in-flight identical request waited in silence (no headers, no bytes) for up to minutes — recreating the OpenClaw ~10-15s timeout/retry storm the heartbeat mechanism exists to prevent, and stacking more waiters each round. Waiters now receive SSE headers + `: heartbeat` comments immediately and replay the original's transcript when it lands. (Test: `proxy.dedup-streaming.test.ts`.)
+- **Balance check time-bounded at 2.5s** (`BALANCE_CHECK_TIMEOUT_MS`). The pre-request balance check runs before SSE headers; a slow RPC (Solana retry ladder ≈ 34s worst case, and zero balances are never cached) starved streaming clients of their first byte. On expiry the request proceeds optimistically; the in-flight RPC still warms the monitor cache. (Test: `proxy.balance-check-latency.test.ts`, via the existing `_balanceMonitorOverride` seam.)
+- **Teardown/leak batch:** partner proxy now `res.end()`s after a mid-stream body-read timeout instead of hanging the client until socket timeout; `readBodyWithTimeout` cancels the stream on timeout (was leaking the undici connection until GC); the budget second-pass 429 path releases the global timeout + close listener; the empty-wallet fallback writes the exclude-aware `freeFallback` pick into the body instead of the hardcoded `FREE_MODEL` (latent exclude-list bypass); the 429-retry success path uses `FREE_MODELS.has()` like its siblings (phantom ~$0.001 session-budget entries); the video poll loop tracks an explicit `completed` flag so a completed-but-empty job no longer reports as "timed out"; `payment-preauth.ts` reuses the rejected pre-auth 402 (which already carries fresh requirements) instead of buying an identical 402 with an extra unpaid round trip.
+- **Hot-path perf:** `estimateAmount` now uses a module-level `Map` (the budget pre-check scanned `BLOCKRUN_MODELS` linearly per model → O(n²) per request); `loadExcludeList` (`src/exclude-models.ts`) gained an mtime-validated cache.
+
+### Registry / pricing (gateway alignment, aloe = source of truth)
+
+- **`anthropic/claude-sonnet-4.5` added** ($3/$15, 200K ctx, vision) — public upstream since the 4.6 launch but missing here entirely; same gap class v0.12.167 fixed for opus-4.5. Pins: `sonnet-4.5`, `sonnet-4-5`, `anthropic/claude-sonnet-4-5`. Bare `sonnet` stays on 4.6; not picker-listed (superseded tier).
+- **Seedance i2v telemetry rates un-discounted** — aloe `403e61e` (2026-06-01) removed the image-to-video discount; the stale `pricePerSecondImageInput` rows (0.13369/0.1742) under-logged i2v cost ~41%. i2v now logs at the text rate. Telemetry-only (payments are server-dictated). Known remaining gap, documented in the comment: aloe's `RESOLUTION_TOKEN_FACTOR` (1080p = 2.25×) still isn't modeled.
+- **`azure/sora-2` added to `VIDEO_PRICING`** ($0.10/s flat, 4s default — a 12s clip was falling back to the generic ~$0.42 telemetry row) and **`openai/gpt-image-2` added to `IMAGE_PRICING`** ($0.06 / $0.12 by size). Both added to README + SKILL docs.
+- **Duplicate-id picker entries eliminated** (`src/models.ts`): catalog entries shadowed by an identically-keyed alias (`free`, `openai/o1-mini`, `google/gemini-3-pro-preview`, `nvidia/kimi-k2.5`) are now excluded from `OPENCLAW_MODELS` — `resolveModelAlias` checks aliases first, so those catalog entries were unreachable and advertised the _old_ model's metadata while callers got the redirect target. The picker's double `free` row is gone (39 → 38 = `top-models.json`), and the surviving `free` entry finally says **GPT-OSS 120B** instead of the retired "Nemotron Ultra 253B". (Tests added in `models.test.ts`.)
+
+### Docs / cleanup
+
+- **Free-model count corrected everywhere: 6** (was variously 8, 9, and 10 across README badges/prose and SKILL.md — stale since the 2026-06-07 sweep). README profile table AUTO·MEDIUM cell synced to `kimi-k2.6 ($0.95/$4.00)` (changed in v0.12.174); ECO·REASONING cell named the actual primary (`grok-4-1-fast-reasoning`); doctor sample output and CLAUDE.md now say Node 22 (floor raised in #183).
+- **Dead code removed:** `src/router/llm-classifier.ts` (designed LLM-fallback classifier, never wired), the vestigial `walletKeyAuth`/`envKeyAuth` interactive auth methods in `src/auth.ts`, `decompressContent` (codebook), `generatePathMapHeader` (paths); two internal-only functions un-exported.
+- **`@noble/hashes` declared as a direct dependency** — `src/wallet.ts` imports it directly but it only resolved via `@scure/*` hoisting (phantom dep; masked at runtime by tsup bundling). Stale tsconfig `exclude` of `error-classification.test.ts` dropped (it typechecks fine).
+
+---
+
+## v0.12.205 — June 8, 2026
+
+Finished de-listing `nvidia/mistral-small-4-119b` after the gateway hid + redirected it (2026-06-08).
+
+- **`nvidia/mistral-small-4-119b` fully de-listed** — the gateway now marks it `hidden` and server-redirects it to `nvidia/llama-4-maverick` (NVIDIA upstream timing out, 3/3 probes >60s). All five alias targets that still resolved to `free/mistral-small-4-119b` (`nvidia/mistral-small-4-119b`, `nvidia/mistral-large-3-675b`, `free/mistral-large-3-675b`, `mistral-free`, `mistral-small`) now resolve to `free/llama-4-maverick`, matching the gateway. Removed from the model catalog and the `/model` picker (`top-models.json`); README budget row dropped. (Test pricing fixture kept as a generic $0 entry.)
+
+## v0.12.204 — June 8, 2026
+
+Free-tier routing realigned to the backend's 2026-06-07 model sweep.
+
+- **`nvidia/qwen3-next-80b-a3b-thinking` removed** — NVIDIA end-of-life 2026-05-21 (HTTP 410; server redirects to `nvidia/llama-4-maverick`). Dropped from the auto-pick set, the `/model` picker (`top-models.json`), the eco-tier fallback chain, and the model catalog. All 15 alias/redirect targets that pointed at it (the nemotron family, `qwen-thinking`, `qwen3-next`, the `nvidia/qwen3-next…` identity) now resolve to `free/llama-4-maverick`, matching the gateway.
+- **`nvidia/glm-4.7` de-listed from auto-pick + picker** — NVIDIA NIM deployment hung; the gateway redirects it to `nvidia/qwen3-coder-480b`. Its aliases (`nvidia/glm-4.7`, `glm-free`) now resolve to `free/qwen3-coder-480b`. (Catalog entry kept so direct `free/glm-4.7` calls still price at $0.)
+- **`nvidia/mistral-small-4-119b` dropped from auto-pick + eco fallback** — upstream timing out (3/3 probes >60s). Still directly callable (alias resolution intact, officially `available` server-side); just no longer a smart-routing target. README annotated.
+
+---
+
+## v0.12.203 — June 6, 2026
+
+- **GLM flat pricing fully retired (backend d840de7).** Z.AI's remaining flat $0.001/call promos ended 2026-06-06: `zai/glm-5` now bills per-token at $0.60/$1.92 and `zai/glm-5-turbo` at $1.20/$4.00 (glm-5.1 stays $1.40/$4.40). Their permanent `flatPrice` fields are removed so payment pre-estimation sizes per-token again; the `flatPrice` mechanism itself stays for any future flat-billed SKU. README pricing rows updated.
+
+---
+
+## v0.12.202 — June 6, 2026
+
+- **Upstream delistings mirrored (gateway health probe 2026-06-06).** `openai/o1-mini` 404s at OpenAI and `google/gemini-3-pro-preview` 404s at Google; the gateway hid both and redirects them (`o1-mini` → `o4-mini`, `gemini-3-pro-preview` → `gemini-3.1-pro`). ALOE mirrors the redirects in `MODEL_ALIASES` (pinned callers land on the successor instead of an upstream error), drops gemini-3-pro-preview from the picker, and removes it from the AUTO COMPLEX fallback chain (it would have silently resolved to the tier primary anyway).
+
+---
+
+## v0.12.201 — June 5, 2026
+
+- **Catalog sync with Tushar Sangwan backend (2026-06-04/05 model drops + repricing).**
+  - **New xAI models** (`src/models.ts`, `src/top-models.json`): `xai/grok-4.3` ($1.50/$4.00, 1M ctx, reasoning + vision + agentic) and `xai/grok-build-0.1` ($1.50/$3.00, 256K, agentic coding) — both resold via Tushar Sangwan's OpenRouter credit pool and public in the backend catalog, so both are picker-visible. Aliases: bare `grok` promoted `xai/grok-3` → `xai/grok-4.3` (grok-3 and the 4-fast/4-1-fast families are now hidden on Tushar Sangwan; explicit IDs still resolve). `grok-code` repointed `deepseek/deepseek-chat` → `xai/grok-build-0.1` (xAI again has a real coding SKU); new pins `grok-4.3`, `grok-build`. The delisted `grok-code-fast-1` redirects stay on cheap chat.
+  - **`deepseek/deepseek-v4-pro` added to the catalog** ($0.435/$0.87 — the 75% launch promo became DeepSeek's permanent list price after 2026-05-31; 1M ctx, reasoning + agentic). Fixes a latent picker bug: `top-models.json` already listed it, but with no `BLOCKRUN_MODELS` entry the `VISIBLE_OPENCLAW_MODELS` filter silently dropped it. `deepseek-chat`/`deepseek-reasoner` entries refreshed from stale V3.2 ($0.28/$0.42, 128K) to V4 Flash ($0.20/$0.40, 1M).
+  - **GLM flat pricing modeled correctly** (`src/models.ts`): new permanent `flatPrice` field on `Tushar SangwanModel` (backend `billingMode: "flat"`; takes precedence in `getActivePromoPrice`). `zai/glm-5` and `zai/glm-5-turbo` switch from an expired promo (ended 2026-04-15 in our metadata) to permanent flat $0.001/request — they had been mis-estimated per-token for 7 weeks. `zai/glm-5.1`'s promo end corrected to 2026-06-05 (when Tushar Sangwan actually ended it); it now bills per-token $1.40/$4.40.
+  - **Router untouched:** tier primaries/fallbacks in `src/router/config.ts` are benchmark-driven; grok-4.3 / grok-build-0.1 / v4-pro enter routing only after they get benchmark rows.
+  - **Docs:** README pricing tables refreshed (deepseek V4 rows, glm flat rows, grok-4.3 / grok-build-0.1 / minimax-m3 / glm-5.1 added); `skills/aloe/SKILL.md` model list updated.
+
+---
+
+## v0.12.198 — May 29, 2026
+
+- **Claude Opus 4.8 is now the Anthropic flagship.** Tushar Sangwan's source-of-truth model registry (`aloe/src/lib/models.ts`) shipped `anthropic/claude-opus-4.8` as its current featured flagship — $5/$25 per 1M (identical to 4.7), 1M context, 128K output, adaptive thinking, `fallbackModel: claude-opus-4.7`. This release aligns ALOE:
+  - **Model registry** (`src/models.ts`): added `anthropic/claude-opus-4.8` to `BLOCKRUN_MODELS` (mirrors the 4.7 spec — 1M ctx, 128K out, reasoning/vision/agentic/tools).
+  - **Aliases** (`src/models.ts`): bare `opus`, `opus-4`, `anthropic/opus`, and generic `anthropic/claude-opus-4` now resolve to 4.8, matching Tushar Sangwan (where bare opus / `aloe-premium` redirect to 4.8). New explicit pins `opus-4.8` / `opus-4-8` / `anthropic/claude-opus-4-8`. Explicit `opus-4.7` / `opus-4.6` / `opus-4.5` pins stay routable on their own version for cost-stability callers.
+  - **Router** (`src/router/config.ts`): `premiumTiers.COMPLEX` primary promoted `claude-opus-4.7` → `claude-opus-4.8` (cost-neutral — same $5/$25), with 4.7 inserted as the first in-family fallback. 4.8 also inserted ahead of 4.7 in the premium REASONING, agentic COMPLEX, and agentic REASONING fallback chains. `selector.ts` baseline left on 4.7 (pricing-identical; no savings-math change).
+  - **Picker** (`src/top-models.json`): added 4.8, removed 4.6 (already hidden on Tushar Sangwan). Picker now shows opus-4.8 + opus-4.7; 4.6 stays resolvable via explicit alias. Note: existing users carry stale `cfg.models.providers.aloe.models` arrays (OpenClaw merges, never deletes), so the 4.6 removal only takes effect on a fresh prune/re-install — same caveat as v0.12.175.
+  - **Diagnostics** (`src/doctor.ts`): `doctor opus` deep-analysis model bumped to 4.8 (identical cost).
+  - **Docs**: README pricing tables/examples and `skills/aloe/SKILL.md` model list refreshed.
+  - No provider-routing or `thinking`-block changes: 4.8's adaptive-thinking contract is identical to 4.7's, which ALOE has routed in production without injecting explicit thinking blocks.
+
+---
+
+## v0.12.197 — May 27, 2026
+
+- **Plugin now loads at gateway boot (manifest capability declarations).** OpenClaw 2026.5.x's strict gateway-boot plugin loader requires the manifest to declare the capabilities a plugin provides. `openclaw.plugin.json` declared none (`Shape: non-capability`), so after `openclaw gateway restart` the loader silently **skipped** ALOE: the x402 proxy never bound `:8402`, the Tushar Sangwan provider/web-search/partner tools never registered, and `/wallet`, `/aloe`, `/stats` etc. returned "no such command" inside the TUI. Install-time hot-reload is lenient and still loaded the plugin, which masked the regression — `openclaw plugins doctor` was the tell, repeating `aloe: plugin must declare contracts.tools before registering agent tools` 26×. Fix adds the four declarations the strict loader needs:
+  - `contracts.tools` — the 26 partner tools registered at runtime (`aloe_predexon_*`, `aloe_stock_*`, `aloe_crypto_*`/`fx_*`/`commodity_*`, `aloe_image_*`, `aloe_video_generation`, `aloe_phone_*`, `aloe_voice_*`). Verified to be an **exact match** to `src/partners/registry.ts` runtime registration — no missing, no extra.
+  - `contracts.webSearchProviders: ["aloe-exa"]` — the Exa-backed web search provider (`src/web-search-provider.ts`).
+  - `providers: ["aloe"]` — declares ownership of the `aloe/*` model IDs (`src/provider.ts`), same pattern as `anthropic`/`openai`.
+  - `activation.onStartup: true` + `enabledByDefault: true` — opt into the trusted boot-load path so the proxy comes up at gateway start instead of lazy-loading.
+
+  Manifest-only change (static JSON read directly by the loader, not bundled into `dist/`); it does not touch the runtime config-write path, so it cannot trip OpenClaw's `baseHash` `ConfigMutationConflictError`. Closes the gateway-restart load failure on OpenClaw 2026.5.19+. Contributor credit: PR [#171](https://github.com/TusharSangwan/ALOE/pull/171) by [@bogdan-velicu](https://github.com/bogdan-velicu) — first-time contributor, thorough repro + verification writeup. 🎉
+
+- **Ships v0.12.195's Seedance pricing fix (latent stale-`dist/`).** v0.12.195 updated `src/proxy.ts` to the 720p+audio per-second rates (e.g. `seedance-1.5-pro` `$0.04375/sec` → `$0.0875/sec`), but the committed `dist/` bundle at v0.12.195 **and** v0.12.196 was never rebuilt from that source — both releases shipped the old 480p-baseline pricing, so the local `estimateVideoCost` telemetry kept under-reporting Seedance usage by ~2× (payment is server-dictated, so no overcharge — telemetry only). This release rebuilds `dist/` from current source, so the corrected Seedance per-second rates finally land in the published bundle.
+
+---
+
+## v0.12.196 — May 24, 2026
+
+- **Updater recovers from OpenClaw size-drop rejection.** OpenClaw v2026.4.5+ refuses to write a config that would shrink the file by a large amount (data-loss guard). Users on a pre-v0.12.175 install carry ~175 entries in `models.providers.aloe.models`; upgrading to a current ALOE legitimately trims that to ~38 (≈90 KB → 25 KB), tripping OpenClaw's guard. The updater previously surfaced this as a hard failure and rolled back, stranding users on the old version. Fix in `scripts/update.sh`: pipe the install output to a captured log, detect the `Config write rejected: …size-drop:` signature, validate the rejected payload against a conservative checklist (top-level keys unchanged, required sections present, model count actually shrank, curated count in [20, 100], non-model sections drift ≤ 2 KB, residual models section ≤ 4 KB, ≥ 65% of the drop comes from the model list), apply just the scoped model-list trim atomically (`tmp.PID` → rename), then fall through to a direct `npm pack` install of the latest version. The EXIT/INT/TERM rollback trap stays active across the fallback path so Ctrl+C still restores the previous install. Tested on a real VPS reproducing the 90728 → 25514 rejection.
+- **Contributor credit.** PR [#170](https://github.com/TusharSangwan/ALOE/pull/170) by [@0xCheetah1](https://github.com/0xCheetah1).
+
+---
+
+## v0.12.195 — May 23, 2026
+
+- **Seedance 720p + audio defaults aligned with aloe re-enable.** Blockrun took the three Seedance entries offline on 2026-05-21 (`available:false`, returning `400 "not currently available"` on POST) after user reports of (1) 480p output without audio, visibly worse than JiMeng on the same prompt, and (2) the missing real-person enrollment flow. On 2026-05-22 (commit `e6dc1f1`) they re-enabled all three with `resolution=720p` + `generate_audio=true(t2v) / false(i2v)` defaults in the videos route, doubling the per-second token count from `10128` → `20256`. ALOE's `VIDEO_PRICING` table was sized for the 480p baseline, so the local `estimateVideoCost` was under-reporting wallet `logUsage` by ~2× for the past day (payment is fully server-dictated, so no overcharge — telemetry only, per `feedback_telemetry_vs_payment`). Updated `src/proxy.ts`:
+  - 1.5 Pro: `$0.04375/sec` → `$0.0875/sec` (flat — no image discount; token360 prices text and image inputs at the same per-M rate).
+  - 2.0 Fast: text `$0.11343/sec` → `$0.22687/sec`, image `$0.06684/sec` → `$0.13369/sec`.
+  - 2.0 Pro: text `$0.14179/sec` → `$0.28358/sec`, image `$0.08710/sec` → `$0.17420/sec`.
+  - Header comment refreshed to call out the 720p+audio default and the doubled tokens/sec.
+- **5s default-call telemetry now lands at:** 1.5 Pro ~$0.46 (was $0.23), 2.0 Fast ~$1.19 text / ~$0.70 image (was $0.60 / $0.35), 2.0 Pro ~$1.49 text / ~$0.91 image (was $0.74 / $0.46). All within ~1% of aloe's quote at the new 720p settings.
+- **Discovery surfaces refreshed.** `src/partners/registry.ts` `video_generation` entry now advertises the 720p+audio defaults, declares `image_url` + `real_face_asset_id` as explicit params (both already worked via raw body passthrough — this just makes them discoverable to agents and the `/v1/partners` listing), and updates the pricing display to the new `$0.46–$2.98` range. `README.md` pricing table + explanatory paragraph and `skills/aloe/SKILL.md` headline rewritten in the same shape — the old "480p, ~10,128 tokens/sec, $0.23–$0.74 / 5s" copy from v0.12.194 is now stale on every surface.
+- **No proxy whitelist or routing change.** Seedance was already in the video proxy path; the re-enable on aloe's side restored POST without ALOE needing to flip any flag. Aliases (`seedance`, `seedance-1.5`, `seedance-2-fast`, `seedance-2`) and the `/videogen` slash command continue to work as before.
+
+---
+
+## v0.12.194 — May 18, 2026
+
+- **Seedance video pricing aligned with aloe's token-priced model.** Last week aloe replaced the flat per-second Seedance pricing with `duration × tokens/sec × $/1M tokens × 1.05 margin` after a verification call against `bytedance/seedance-2.0-fast` measured 10,128 tokens/sec at 480p (token360's default, not the 720p we'd guessed). The old ALOE `VIDEO_PRICING` table was both wrong-shaped and ~3–4× off on the high side. Updated `src/proxy.ts`:
+  - `VIDEO_PRICING` now stores base `$/sec` (no margin baked in — `estimateVideoCost` still applies the 5% margin to match server's `MARGIN_PERCENT`). Per-second values are derived from `10128 × $/1M tokens / 1e6`.
+  - New optional `pricePerSecondImageInput` field per model. 2.0 Fast and 2.0 Pro charge ~40% less per token on image-to-video (token360's published image rate); 1.5 Pro stays flat because its audio-generation toggle isn't yet wired to a request param, and undercharging when audio is on by default would be silent loss.
+  - `estimateVideoCost(model, durationSeconds, hasImageInput)` picks the cheaper image rate when the request body has `image_url`. The video route now parses `image_url` presence alongside `model` + `duration_seconds` and threads it into the cost callsite (`src/proxy.ts:2706, 2876`).
+  - **Net effect** on the default 5s call telemetry: 1.5 Pro $0.16 → $0.23, 2.0 Fast $0.79 → $0.60 text / $0.35 image, 2.0 Pro $1.58 → $0.74 text / $0.46 image. Matches aloe's quoted prices to within rounding. This is telemetry-only — payment is fully server-dictated via x402 (`feedback_telemetry_vs_payment`).
+- **BytePlus RealFace passthrough documented (no code change needed).** aloe added an optional `real_face_asset_id` body field (format `ta_xxxxxxxx`) on Seedance 2.0 variants for real-person character consistency across frames. The ALOE video route already forwards the raw request body to aloe as-is, so RealFace works transparently — but the README + `skills/aloe/SKILL.md` headline didn't mention it. Updated both with usage notes, the per-1M-token pricing model, and the constraint that RealFace + `image_url` are mutually exclusive (both seed the first frame; pick one).
+- **Surf skill refreshed against aloe's real `/gateway/v1` catalog (83 endpoints).** The first Surf skill (v0.12.193) was drafted in parallel with aloe's integration and ended up out of sync once aloe:
+  - Switched to `api.asksurf.ai/gateway/v1` (real public gateway, 82–83 real endpoints) and dropped 15 invented routes the skill had described.
+  - Pre-validates required query params per endpoint **before settling payment** — call with a missing param and you get `400 { missing_params, all_required, docs }` and the wallet isn't charged. 56 of 83 endpoints have required params.
+  - Dropped surf-1.5 chat (`/surf/chat/completions`) again pending per-token billing — calling it now returns 404 without taking payment.
+
+  Updated `skills/surf/SKILL.md`:
+  - Endpoint count 84 → 83, removed the Chat section, added the required-param pre-check note up front.
+  - Fixed param names that the agent would otherwise feed incorrectly and trip the pre-check 400: `social/mindshare` is `q` + `interval` (not `project` + `window`), `search/*` family is `q` (not `query`), `token/holders` + `token/transfers` need `address` AND `chain`, `onchain/gas-price` needs `chain`, `onchain/tx` needs `hash` + `chain`, exchange family universally needs `pair`, market family uses `symbol`, prediction-market endpoints use their specific identifier params (`market_slug`, `event_slug`, `condition_id`, `market_ticker`, `event_ticker`, `ticker`, `address`), and `fund/ranking` + `project/defi/*` need `metric`.
+  - Reworded the example flows that previously used wrong param names (`search/project?query=ethena` → `?q=ethena`, mindshare example fixed).
+
+- **Phone skill — voice/call `from` is now optional with server-side auto-pick.** aloe moved `from` from required → optional on `/v1/voice/call`. After payment verification the server picks a caller-ID from the wallet's owned numbers: 0 active → `403 no_active_number` with buy-first hint, exactly 1 → auto-used, 2+ → `400 ambiguous_from` listing all candidates. The prior skill said "Otherwise Bland picks one" — wrong, and would have made agents leave `from` off and confuse users with the 403/400 responses. Updated `skills/phone/SKILL.md` with the actual auto-pick rule table and the ownership-mismatch 403 behavior.
+- **No code change for `real_face_asset_id`, no new partner tools, no proxy whitelist change.** Surf + Phone are both base+skill integrations (per the v0.12.193 rule). All aloe upstream changes here flow through the existing `proxyPaidApiRequest` path transparently.
+
+---
+
+## v0.12.193 — May 17, 2026
+
+- **Surf integration — first skill-only marketplace API.** Tushar Sangwan launched the Surf unified crypto data API ([aloe.ai/marketplace/surf](https://aloe.ai/marketplace/surf)) — 84 endpoints across 13 domains: CEX/DEX markets, on-chain SQL over 80+ ClickHouse tables (Ethereum, Base, Arbitrum, BSC, TRON, HyperEVM, Tempo), 100M+ labeled wallets, prediction markets (Polymarket + Kalshi), social/CT mindshare, news, project/DeFi metrics, token analytics, unified search, VC fund intelligence. Settles directly to Surf's Base treasury in USDC; no Surf account or API key required.
+- **New release pattern: base whitelist + skill, no typed wrappers.** Earlier integrations (Predexon, Phone/Voice) wrote 200–400 lines of TypeScript per partner in `src/partners/registry.ts` — hand-authored summaries of each endpoint exposed as `aloe_*` tools. That pattern doesn't scale: Surf alone has 84 endpoints, and the next Tushar Sangwan-marketplace API will have more. From this release forward, new partner APIs ship as a **skill** (markdown the agent reads on demand) plus a one-line addition to the proxy namespace whitelist. The agent reads `skills/<api>/SKILL.md`, crafts the HTTP call, and gets paid x402 settlement transparently. **Adding a new Surf endpoint requires zero ALOE release.** This matches the Anthropic Skills convention ([github.com/anthropics/skills](https://github.com/anthropics/skills)) and aligns with how Claude Code is designed to consume capability surfaces.
+- **Proxy whitelist.** Extended the partner-route regex at `src/proxy.ts` to match `/v1/surf/*`. Requests flow through the existing `proxyPaidApiRequest` (x402 handled transparently). New `isSurf` branch in the telemetry hook emits `tier: "SURF"` with `model = "surf/<operation>"` so `aloe stats` and `aloe report` see Surf usage as a distinct line — distinct from LLM, generic Partner, and Phone tiers. Updated `proxyPaidApiRequest` JSDoc + the inline route comment to document the new namespace.
+- **No registry entries — no `aloe_surf_*` tools.** Deliberate. The agent reads `skills/surf/SKILL.md` for the endpoint catalog and crafts calls to `http://127.0.0.1:8402/v1/surf/...` directly. Skip the duplication.
+- **`skills/surf/SKILL.md` (new).** Full endpoint reference grouped by domain (Exchange, Market Overview, News, On-Chain, Prediction Markets, Project + DeFi, Social/CT, Token Analytics, Unified Search, VC Fund, Wallet Intelligence, Web, Chat). Pricing tier table ($0.001 / $0.005 / $0.020). Four worked example flows (wallet ID, token concentration, custom on-chain SQL with schema-fetch pattern, project mindshare lookup). Frontmatter triggers cover the natural-language queries an agent would phrase to find this skill (`"onchain sql query"`, `"wallet labels api"`, `"crypto mindshare"`, etc.).
+- **`skills/aloe/SKILL.md` headline update** — per the `feedback_skill_dual_layer` rule. Added "Crypto Data (Surf) — skill-only integration" section after Prediction Markets, explaining the new base+skill pattern and pointing at the dedicated `surf` skill. Frontmatter `description` and `triggers` extended to surface Surf capabilities. Without this headline update, agents reasoning about crypto-data tasks would skip ALOE even with the dedicated `surf` skill present.
+- **README** — new "Crypto Data (Surf)" section between Phone & Voice and Models & Pricing, with the pricing table, three curl examples (price, batch wallet labels, on-chain SQL), and a link to `skills/surf/SKILL.md`. Notes that this is the new pattern for marketplace APIs.
+- **`openclaw.plugin.json` description** — mentions Surf so the OpenClaw plugin browser surfaces the capability.
+- **Tests** — new `src/proxy.surf-routing.test.ts` mirrors the partner-path regex literal and adds 10 assertions: positive matches for `/v1/surf/{market/price,onchain/sql,wallet/labels/batch,prediction-market/polymarket/markets,chat/completions}`, negative guards against `/v1/surfer/*`, `/v1/surfaces/*`, and bare `/v1/surf` (no trailing slash), plus regression guards for existing partner paths (`/v1/pm/*`, `/v1/exa/*`, `/v1/phone/*`, `/v1/voice/*`, `/v1/stocks/*`) and non-partner `/v1` routes (`/v1/chat/completions`, `/v1/models`, `/v1/images/generations`). Mirroring the regex literal here means any silent regex edit fails loudly in CI.
+- **Aborted course-correction in the same session** (process note worth recording): the first pass of this integration also added 11 typed `aloe_surf_*` tools to `src/partners/registry.ts` (~470 lines) and generalized the `__dynamic__` handler in `src/partners/tools.ts`. Reverted both before commit on user feedback — Surf doesn't belong in `registry.ts`, and generalizing the dynamic handler without a second user would have been speculative. **Lesson:** mirroring the Predexon/Phone pattern by reflex skips the question of whether the pattern itself still scales. With Surf at 84 endpoints, it doesn't. New rule: typed partner wrappers are reserved for narrow, high-leverage APIs (≤12 endpoints, agent-facing tools that benefit from JSON-schema validation in OpenClaw). Everything else is base + skill.
+
+---
+
+## v0.12.192 — May 16, 2026
+
+- **Phone & Voice integration — Tushar Sangwan's phone capability stack is now first-class in ALOE.** Tushar Sangwan shipped 8 phone endpoints earlier this cycle (Twilio for number intelligence + provisioning, Bland.ai for AI-powered outbound voice calls), all x402-gated behind `aloe.ai/api/v1/phone/*` and `aloe.ai/api/v1/voice/*`. ALOE had **zero integration** — agents reasoning about phone tasks would skip ALOE entirely (per the `feedback_skill_dual_layer` rule: if `skills/aloe/SKILL.md` doesn't list a Tushar Sangwan capability, AI agents ignore the local proxy and hit the gateway directly, losing wallet/telemetry/local visibility). This release closes the gap on every surface.
+- **Proxy paths.** Extended the partner-route regex at `src/proxy.ts:2782` to match `/v1/phone/*` and `/v1/voice/*`. Both flow through the existing `proxyPaidApiRequest` (x402 handled transparently). New `isPhone` branch in the telemetry hook emits `tier: "PHONE"` with model = `phone/<operation>` (so `aloe stats` and `aloe report` see phone usage as a distinct line). `PHONE_PRICING` table mirrors server-side `twilio.ts` + `bland.ts` pricing (longest-prefix match handles `/voice/call/{id}` poll URLs correctly) and is used only as the telemetry fallback when the x402 paymentStore is empty — actual settlement is always server-dictated.
+- **Tool registry.** Eight new entries in `src/partners/registry.ts` (`PartnerCategory` union extended with `"Communications"`):
+  - `aloe_phone_lookup` ($0.01) — carrier + line type
+  - `aloe_phone_lookup_fraud` ($0.05) — SIM-swap + call-forwarding signals
+  - `aloe_phone_numbers_buy` ($5.00 / 30 days) — provision a US/CA number tied to the wallet
+  - `aloe_phone_numbers_renew` ($5.00 / +30 days) — extend lease
+  - `aloe_phone_numbers_list` ($0.001) — wallet's active numbers
+  - `aloe_phone_numbers_release` (free) — release a number back to the pool
+  - `aloe_voice_call` ($0.54 flat, ≤30 min) — outbound AI voice call via Bland.ai
+  - `aloe_voice_status` (free) — poll call status / transcript / recording
+  - Voice-call tool description carries an explicit safety guardrail: "places a REAL outbound phone call to a real number — only invoke when the user has explicitly asked." Server enforces an emergency-number blocklist; ALOE trusts upstream rather than duplicating the list.
+- **`/cr-call` slash command** in `src/index.ts`, registered alongside `/cr-imagegen` and `/videogen`. Syntax: `/cr-call +1<E.164> "<task>" [--voice nat] [--max-duration 5] [--from +1<owned-number>] [--language en-US]`. New `parseCallArgs` helper handles both `--key=value` and `--key value` flag forms, recognizes the first `+E.164`-shaped token as the destination, and packs the rest as the natural-language task. Mode is **fire-and-forget**: the command POSTs to `/v1/voice/call`, returns `call_id` + `poll_url` immediately, and tells the user to poll for transcript when the call completes. The `cr-` prefix is mandatory — `/call` and `/phone` are even more commonly reserved by chat platforms than `/imagegen` was when v0.12.190 had to rename it; we don't register either bare form.
+- **`aloe phone` CLI subcommand** in `src/cli.ts` covers the wallet-resource operations that don't make sense as chat slash commands:
+  - `aloe phone numbers list` — formatted table with E.164, country, expiry-in-days, `⚠ renew soon` flag for ≤2 days remaining
+  - `aloe phone numbers buy <US|CA> [--area-code <code>]` — provision
+  - `aloe phone numbers renew <+E.164>` — extend lease
+  - `aloe phone numbers release <+E.164>` — release
+  - `aloe phone lookup <+E.164>` — quick carrier check
+  - `aloe phone fraud <+E.164>` — quick SIM-swap check
+  - All subcommands POST to the running proxy at `127.0.0.1:8402`; payment flows through the existing wallet. 402 errors render with a friendly "fund your wallet" hint.
+- **SKILL.md double-layer update**, per `feedback_skill_dual_layer` rule:
+  - `skills/aloe/SKILL.md` — added "Phone & Voice (Twilio + Bland.ai)" section after Image & Video, with the full 8-tool table; updated frontmatter `description` and `triggers` to mention phone capabilities. Without this headline update, AI agents would route around ALOE when reasoning about phone tasks even with the partner registry populated — they need to see the capability surfaced where they're already looking.
+  - `skills/phone/SKILL.md` (new) — dedicated reference: full HTTP API for each endpoint, parameter tables, fire-and-forget polling explanation, three example agentic flows (verify-before-text, appointment confirmation, acquire-caller-ID).
+- **README** — new "Phone & Voice Calls" section between Image Editing and Models & Pricing, with the pricing table, slash command + CLI examples, raw `curl` HTTP usage, and the same safety guardrail surfaced in the tool description.
+- **`openclaw.plugin.json` description bump** — mentions phone + voice capability so the OpenClaw plugin browser surfaces it.
+- **Out of scope (deferred):** local recording/transcript download (recordings can be large; returning Bland.ai's hosted URL is sufficient for v1), auto-polling voice-call status to completion in the slash command (user opted for fire-and-forget so the chat experience returns immediately), SMS/MMS (Tushar Sangwan hasn't exposed yet), auto-renew on lease expiry (CLI surfaces the warning, user decides).
+- **Two telemetry bugs surfaced and fixed during real-call smoke testing** (placed an actual $0.54 call to `+15707043521` via the patched dist; tx `0xfe6c6b5e...` settled on Base; wallet reconciliation correct: $84.49 → $83.95 = exactly one $0.54 debit). Both bugs were pure logging artifacts — wallet was never wrongly debited — but they would have given misleading numbers in `aloe stats` and `aloe report`. Both fixes consolidated into a new exported pure helper `resolvePhoneTelemetryCost` (in `src/proxy.ts`) with 8 unit tests locking down the gates:
+  - **Bug 1 — phantom $0.54 charge on 4xx voice POST.** First smoke test POSTed `/v1/voice/call` with empty `{}` body to exercise routing without spending money. Tushar Sangwan returned 400 (Zod validation: "expected string, received undefined"). The wallet wasn't charged, but the telemetry hook saw `paymentStore.amountUsd = 0` and fell back to `estimatePhoneCost("/v1/voice/call") = $0.54`. Stats would record a phantom voice call. Fix: gate the fallback on `upstream.status`being 2xx — any 4xx/5xx skips the fallback and logs`$0`.
+  - **Bug 2 — GET poll miscounted as another $0.54 voice call.** After placing a real call, polling `GET /v1/voice/call/{call_id}` for transcript status (free upstream) was being logged at $0.54 because the longest-prefix match on `voice/call/` triggered the same fallback row as the initiating POST. Every 30s poll would inflate stats by $0.54. Fix: also gate the fallback on `req.method === "POST"` — GET polls log `$0`.
+  - **Refactor**: gate logic was originally inline inside `proxyPaidApiRequest`. Pulled it out into `resolvePhoneTelemetryCost(args)` so the rules are independently testable (the call site is now four lines passing an args bag through the helper). Adds 8 vitest cases covering: paid-amount-wins, 4xx phantom guard, GET poll guard, 5xx guard, missing-method guard, non-phone-passthrough, and the original "successful POST with empty paymentStore → fallback" path. Without the helper extraction, locking these gates in tests would have required a full integration test with a mocked upstream — too heavy for telemetry-only logic.
+- **Tests** — new `src/proxy.phone-routing.test.ts` (regex matching for /v1/phone/\*, /v1/voice/\*, /v1/voice/call/{id} poll, plus negative case for /v1/phonebook), `src/proxy.phone-pricing.test.ts` (longest-prefix matching + the 8 `resolvePhoneTelemetryCost` gate cases above), `src/parse-call-args.test.ts` (both flag forms, quoted task spans, E.164 first-token detection). Total 31 new test cases; all 569 vitest tests green; typecheck + lint clean.
+- **Smoke test record** (free-tier verification before the real call): list-numbers ($0.001) returned an existing wallet-owned number `+15707043521` (PA, expires 2026-06-15); lookup ($0.01) on that same number returned full Twilio carrier metadata (`type: nonFixedVoip`, `carrier_name: Twilio - SMS/MMS-SVR`); negative test `/v1/phonebook/test` correctly rejected by the partner regex (502 from chat-completion fallback rather than partner routing); CLI table formatting + expiry-warning logic verified by `aloe phone numbers list`.
+
+---
+
+## v0.12.191 — May 14, 2026
+
+- **`free/deepseek-v4-pro` delisted from the model picker** — NVIDIA's V4 Pro deployment has been hung since 2026-04-30 (verified: connection hangs indefinitely, no bytes returned in 300s). The model was still showing in the OpenClaw picker as `[Free] DeepSeek V4 Pro`, misleading users who selected it into getting V4 Flash via Tushar Sangwan's server-side redirect. Fix: removed from `src/top-models.json` (picker) and `BLOCKRUN_MODELS` registry; all aliases that previously pointed at it (`free/deepseek-v4-pro`, `nvidia/deepseek-v4-pro`, `nvidia/deepseek-v3.2`, `free/deepseek-v3.2`, `deepseek-free`, `deepseek-v4-pro`, `v4-pro`) now redirect directly to `free/deepseek-v4-flash` at the ALOE level, skipping the double-hop through Tushar Sangwan's redirect. `free/deepseek-v4-flash` (1M context, MMLU-Pro 86.2) remains the active free DeepSeek option. The entry will be restored if and when NVIDIA brings the V4 Pro deployment back online.
+
+---
+
+## v0.12.190 — May 13, 2026
+
+- **`/imagegen` slash command renamed to `/cr-imagegen` to resolve Telegram channel-command collision** ([#165](https://github.com/TusharSangwan/ALOE/issues/165)). Telegram bot integrations reserve `/imagegen` for their own image-gen bots (Hugging Face Spaces et al.), and OpenClaw's runtime emits `Plugin command "/imagegen" conflicts with an existing Telegram command` when ALOE registered the same name. The `api.registerCommand` at `src/index.ts:1768` now registers `cr-imagegen` so OpenClaw's command registry no longer fights the channel. Backward compatibility preserved: typing legacy `/imagegen <prompt>` in chat still works — the `src/proxy.ts` chat-prefix interceptor accepts both `/cr-imagegen` and `/imagegen` (slice length adjusts to whichever prefix matched). User-facing help text, partner-tool footer, README, `docs/image-generation.md`, and `skills/imagegen/SKILL.md` all updated to lead with the new name while noting the legacy form remains accepted. `/videogen` left untouched — no collision reported in the field yet, and unnecessary churn is unnecessary churn.
+
+---
+
+## v0.12.189 — May 12, 2026
+
+- **Dependency refresh: x402 2.9 → 2.11, viem 2.47 → 2.48, openclaw devDep 2026.5.4 → 2026.5.7.** Routine in-range upgrade pass — no API breakage, all 531 tests green, typecheck + lint clean. Bumps via `npm update` (semver-safe) covered:
+  - `@x402/core`, `@x402/evm`, `@x402/fetch`, `@x402/svm` → 2.11.0 (the payment-protocol stack; 2.10 + 2.11 are bugfix-only over the 2.9 line we shipped in v0.12.182).
+  - `viem` → 2.48.11 (Ethereum RPC client used for Base USDC balance checks; the `mainnet.base.org` RPC failures visible in `~/.openclaw/logs/gateway.err.log` are external network reliability, not viem bugs — but staying on tip-of-2.x means we pick up any improved retry/timeout logic when it ships).
+  - `openclaw` (devDep) → 2026.5.7 (no plugin API surface changes affecting us; we still declare `compat.minGatewayVersion = 2026.5.2` for the strict-validation regime we adapted to in v0.12.184/186).
+  - `@scure/bip32` 2.0.1 → 2.2.0, `prettier` 3.8.1 → 3.8.3, `eslint` 10.2.0 → 10.3.0, `typescript-eslint` 8.58.1 → 8.59.3, `vitest` 4.1.3 → 4.1.6 — all in-range.
+- **`@solana/kit` deliberately held at v5.5.1.** `npm view` shows v6.9.0 available, but `@x402/svm@2.11.0`'s nested transitive dependency tree still pins to `@solana/kit@5.5.1` (deduped to a single copy in `npm ls`). Bumping ALOE's top-level pin to v6 would re-introduce the dual-version split that caused `transaction_simulation_failed` on Solana payments (root-caused on 2026-03-06; see memory `feedback_solana_kit_version_split`). When `@x402/svm` updates its nested pin, we follow — not before.
+- **Test fix for OpenClaw 2026.5.7 dist layout.** `test/integration/security-scanner.test.ts` was crashing with `Cannot read properties of undefined (reading 'length')` against the new openclaw build. Root cause: 2026.5.7 ships **two** `skill-scanner-*.js` chunks in `node_modules/openclaw/dist/` — one minified (with mangled exports `a, i, n, r, t`) and one with proper names (`scanDirectoryWithSummary` et al.). The test's `files.find((f) => f.startsWith("skill-scanner"))` picked the FIRST one alphabetically (`skill-scanner-DP5fYVFn.js`, the mangled one), found no `scanDirectoryWithSummary` named export, fell through to "first function export" — which returned the wrong function (something like `clearSkillScanCacheForTest`), returning `undefined`. Fixed by iterating **all** `skill-scanner-*` chunks and picking the one that actually exports `scanDirectoryWithSummary`. The pre-2026.5.4 "first function export" fallback path is preserved for older builds (Docker e2e harness still tests against the long tail).
+- **No runtime changes; no shipped behavior changes.** Pure dependency hygiene + one test-harness fix. Existing users see identical proxy behavior; the upgrade matters mainly for users on bare `npm install -g` (who get the newer x402 client when they reinstall) and for Docker/CI environments running the e2e tests against fresh OpenClaw versions.
+
+---
+
+## v0.12.188 — May 9, 2026
+
+- **`aloe share` — convert the most recent assistant response into IM-flavored markdown for paste-and-share.** The pain point: OpenClaw renders gorgeous markdown via Warp+SSH, but copy-paste to IM mangles tables / `###` headings / bold. This is a real community ask — upstream [openclaw#7909 "Add plain text copy option"](https://github.com/openclaw/openclaw/issues/7909) has been OPEN since 2026-02-03 with 4 comments and a volunteer (juliabush) but no merged fix; codex review on 2026-04-30 confirms maintainers haven't given UX direction. ALOE sits at a unique vantage point — it sees every response body the model emits — so we can ship a CLI-side fix in days while the upstream UI fix waits. Six IM presets, each tuned to the target dialect:
+  - **`feishu`** — Lark / 飞书. The headline issue: Feishu desktop renders `**bold**`, tables, emoji, lists, code blocks correctly, but treats `### foo` as literal text. The `feishu` preset converts `# / ## / ###` headings to `**bold**` and strips `---` horizontal rules (which Feishu also doesn't render). Markdown tables stay intact (Feishu renders them natively).
+  - **`slack`** — Slack mrkdwn dialect. Distinct from CommonMark: Slack uses `*single-star*` for **bold** (not `**double-star**`) and `_underscore_` for _italic_. Headings → `*bold*`. Markdown links `[text](url)` → Slack's `<url|text>` syntax. `&` `<` `>` get HTML-entity escaped but not inside the link tokens. Strikethrough `~~x~~` → `~x~`. Bullet `-` → `•` for visual polish. Tables → fixed-width text inside ` ``` ` code fences (Slack doesn't render markdown tables natively).
+  - **`discord`** — CommonMark-compatible (Discord supports `# ## ###` headings since 2023, plus bold/italic/strike/link). The only conversion: tables → fixed-width fenced blocks (Discord doesn't render tables natively).
+  - **`telegram`** — MarkdownV2. The strict one: any unescaped `_*[]()~``>#+-=|{}.!` in body text causes the Telegram bot API to reject the message with `Bad Request: can't parse entities`. The preset tokenizes the input, hard-escapes every reserved character in plain-text spans, preserves formatting tokens (`*bold*`, `_italic_`, `` `code` ``, `[text](url)`), and packs tables into ` ``` ` pre-blocks (where escaping is unnecessary). Headings → `*bold*`. Output >4096 chars is split at line boundaries with `(i/N)` continuation suffix via `transformForTelegramSplit()`.
+  - **`whatsapp`** — Same single-star bold + underscore italic dialect as Slack/Telegram. Strikethrough `~~x~~` → `~x~`. Links `[text](url)` → `text\nurl` (lets WhatsApp auto-preview the URL on its own line). Tables → fenced fixed-width text.
+  - **`plain`** — Strips all markdown for IMs that render text as-is (WeChat / QQ / iMessage / LINE / Signal). Headings: `# Foo` underlined with `===`, `## Foo` underlined with `---` (visible hierarchy that survives plaintext), `###`+ stripped to body. Bold/italic/strike markers removed. Tables converted to `label: value\nlabel: value` lines (multi-column tables produce header-prefixed blocks separated by blank lines). Links → `text (url)`. Inline code ticks stripped, content kept. Horizontal rules removed.
+- **The hard parts that needed real care, not just regex sprawl:**
+  - **Asterisk dialect collision (Slack/WhatsApp/Telegram).** Source has CommonMark `**bold** *italic*`, target wants `*bold* _italic_`. If you naively run "double-star → single-star" first, the next pass's "single-star → underscore" eats the just-converted bold. Fix: extract `**bold**` into placeholder strings (`__CR_PH_BOLD_0__`) before italic conversion, then restore as `*bold*` afterward. Same trick for converting markdown links to Slack's `<url|text>` so the angle brackets aren't HTML-entity-escaped in the next stage.
+  - **Heading conversion ordering.** First implementation converted `### foo` directly to single-star `*foo*` (for Slack/WhatsApp), which then got eaten by the italic regex. Fix: heading regex always emits double-star `**foo**`, which gets scooped into the bold-protection placeholder along with naturally-occurring bold, and restored to single-star at the end.
+  - **Code-fence protection.** Two passes around `splitByFences()`: first, run table-to-fence conversion only on prose segments (so existing code blocks with stray `|` characters aren't misparsed as tables); second, re-split the result (the table conversion just generated new fences) and apply per-preset text rules only to prose, never to fence content. Otherwise the bold/italic regex would eat across fence boundaries when tables happen to contain `**` or `*`.
+  - **CJK column widths.** The user's actual content is Chinese — table headers like `指标` / `数值`. CJK characters take 2 monospace columns, not 1. The plain-text table renderer counts visible width by codepoint range (CJK Unified, Hangul, Fullwidth, etc) and pads accordingly so columns stay aligned in non-tabular IMs.
+  - **Plain-text horizontal-rule order.** First implementation stripped HRs (`^-{3,}$`) AFTER adding `## foo` underlines — those underlines are themselves dashes, so longer headings (≥3 chars) were getting their underlines vaporized. Fix: strip HRs FIRST, add heading underlines second.
+- **Persistence: `~/.openclaw/aloe/responses/responses-YYYY-MM-DD.jsonl`.** Mirrors the existing usage-log path layout (`src/logger.ts`). Each JSONL entry: `{ id, timestamp, sessionId, model, requestSummary, responseText }`. The `id` is `resp_<ms>_<hex6>` so users can refer to specific responses in `aloe share <id>`. `requestSummary` is the user's last message truncated to 80 chars, surfaced in `share list` so people can identify which response is which. Persistence is fire-and-forget from the request handler — errors are swallowed inside `appendResponse` so they never affect the request flow. **Privacy opt-out**: set `BLOCKRUN_RESPONSE_STORE=off` to disable. (Default on; future v0.12.x release may add a TTL or auto-prune, deliberately deferred until usage signal arrives.)
+- **Hooks into `src/proxy.ts`.** The chat-completion handler already accumulates the full assistant text into `accumulatedContent` for the session journal (lines 5219–5221 streaming, 5599 non-streaming). Both branches converge at the journal `record` call near line 5635 — the response-store append fires immediately after, gated on `accumulatedContent && isChatCompletion`. The user-prompt summary is captured up front into a new outer-scope `requestSummaryForStore` variable from `lastUserMsg.content` (handles both string and multimodal content arrays).
+- **Four new HTTP routes on the proxy** (added next to `/v1/models`):
+  - `GET /share/list?limit=20` — paginated metadata index (id, timestamp, model, sessionId, summary, responseLength).
+  - `GET /share/last?as=<preset>&sessionId=<sid>` — most-recent entry, optionally pre-rendered for a preset; `sessionId` filter prefers entries from the same OpenClaw session.
+  - `GET /share/:id` — fetch a specific entry by id.
+  - `GET /share/:id/render?as=<preset>` — fetch + render in one call.
+- **`aloe share` CLI subcommand**:
+  - `aloe share last` — render most recent response (default preset = `feishu`, override with `BLOCKRUN_DEFAULT_SHARE_PRESET` env or `--as=<preset>`), print to stdout, copy to clipboard.
+  - `aloe share list [--limit=20]` — recent entries with id, timestamp, model, prompt summary.
+  - `aloe share <id> [--as=<preset>]` — render specific entry.
+  - `aloe share last --all` — write all 6 preset variants to `/tmp/claw-share-<id>-<preset>.txt` and print paths (lets users compare side-by-side and pick).
+- **Cross-platform clipboard** with zero new npm dependencies. Spawns the platform-native binary: macOS `pbcopy`, Linux `wl-copy` / `xclip` / `xsel` (probed in order), Windows `clip.exe`. If none work, prints a friendly hint and continues — the rendered text is still on stdout so the user can manually copy it.
+- **Test coverage**: `src/share-formatters.test.ts` adds 58 tests grouped by preset plus integration tests against a real-world equivalent of the user's screenshot (semiconductor-bubble analysis with `### 1. 估值已进入极端区域` heading + a CJK-content table). Each preset's headline behavior is asserted: `feishu` converts `###`→`**`, `slack` does the asterisk-dialect dance without corrupting bold-when-italic-is-also-present, `discord` preserves `###` (Discord supports headings), `telegram` escapes `.` `-` `(` correctly and leaves pre-block content un-escaped, `whatsapp` uses single-star bold + underscore italic, `plain` strips everything and produces `key: value` table renderings. Edge cases: code-block protection (markdown patterns inside ` ``` ` aren't transformed), tables with escaped `|`, Telegram >4096 split with `(i/N)` suffix, CJK width calculation. Total test count 457 → 515 (+58), all green; typecheck + lint clean.
+- **What we deliberately did NOT do.** No PNG render (would require puppeteer ≈150MB or satori+resvg ≈30MB; the `--all` flag plus future Phase 2 hosted share both cover that need without the install bloat). No hosted share-link endpoint (depends on Tushar Sangwan server-side `/v1/share` work; a future Phase 2). No automatic share-hint injection at the end of every response (would pollute every assistant message; release-notes communication is enough). No IM auto-detection (would require telemetry; user picks via `--as` or sets `BLOCKRUN_DEFAULT_SHARE_PRESET`). No upstream OpenClaw PR yet — the `share-formatters.ts` module is a strict superset of openclaw#7909's plain-text request and is portable; future PR opportunity once we have user signal.
+- **Web search opt-out: `BLOCKRUN_WEB_SEARCH=off` env var or `tools.web.search.enabled = false` in `~/.openclaw/openclaw.json` now respected.** Two users (Mark, baconvalley) reported `aloe-exa` keeps reappearing in their config after they edit it out. Root cause: `register()` called `registerWebSearchProvider()` unconditionally and `injectModelsConfig()` flipped `enabled` back to `true` on every plugin load — so any user opt-out got clobbered. Added `isBlockrunWebSearchDisabled()` helper consulted at both sites: when disabled, `register()` skips registration (so OpenClaw's auto-detect won't pick aloe-exa as the active provider) and `injectModelsConfig()` leaves `enabled` untouched on disk. The legacy-`provider`-stripping migration from v0.12.186 still runs regardless — that's correctness against OpenClaw's known-providers validator, not opt-in. Log line `Tushar Sangwan web search disabled (BLOCKRUN_WEB_SEARCH=off or tools.web.search.enabled=false)` confirms the opt-out took effect. `docs/configuration.md` updated. 16 new unit tests in `src/web-search-disable.test.ts` covering env precedence over config, case-insensitive matching, defensive nesting against malformed `tools.web.search`; total test count 515 → 531.
+- **Repository hygiene**: removed 5 stale root-level smoke scripts (`final-test.mjs`, `test-auto-connection.mjs`, `test-config-changes.mjs`, `test-profiles.mjs`, `test-routing-changes.mjs` — superseded by `src/**/*.test.ts` since v0.12.79) plus the long-dead `aloe-aloe-0.8.25.tgz` package artifact. `AGENTS.md` (untracked, byte-identical to `CLAUDE.md`) also removed. Net −659 lines from the repo.
+
+---
+
+## v0.12.187 — May 7, 2026
+
+- **Predexon v2 spec alignment.** Tushar Sangwan shipped Predexon v2 today (commit `ffa22d4 refactor(predexon): align endpoint registry with Predexon v2 spec`) — adds 9 new endpoints, changes the path shape of 3 wallet endpoints, and retires `polymarket/wallet/identities-batch` (the old GET-with-csv form falls through to the wildcard route, harmless if hit). Total endpoint count: 48 → 57. Confirmed live against prod via `curl https://aloe.ai/api/v1/pm/{markets,markets/listings,sports/categories,sports/markets,polymarket/markets/keyset,polymarket/wallet/identity/0xabc,outcomes/abc}` — all return 402 ✓; `POST polymarket/wallet/identities` with `{addresses:[..]}` body also 402 ✓. **Trading API (a separate Predexon spec) intentionally not exposed** — confirmed with @1bcMax. Changes in ALOE:
+  - **`aloe_predexon_endpoint_call` description refreshed** in `src/partners/registry.ts`: full 57-endpoint catalog grouped as Polymarket Tier 1 / Polymarket Tier 2 wallet analytics / Polymarket Wallet Identity (v2 paths) / Cross-venue canonical (v2: `markets`, `markets/listings`, `outcomes/{predexon_id}`) / Sports (v2: `categories`, `markets`, `markets/{game_id}`, `outcomes/{predexon_id}`) / Kalshi / Limitless·Opinion·Predict.Fun / dFlow / Binance Futures / Matching. Keyset pagination variants (`polymarket/markets/keyset`, `polymarket/events/keyset`) and trade-activity (`polymarket/activity`, `polymarket/markets/{tokenId}/volume`, `polymarket/markets/{conditionId}/open_interest`) listed too.
+  - **POST + body support** added to the tool runner (`src/partners/tools.ts`): two new optional params `method` ('GET' default, 'POST' for bulk identities) and `body` (JSON object as string, e.g. `'{"addresses":["0x1","0x2"]}'`). GET + query unchanged. POST defaults body to `{}` when unspecified. Method validated to `'GET'|'POST'` only. Body parses through JSON.parse with cause-attached error.
+  - **Wallet identity v2 path shapes propagated** to the description: `/pm/polymarket/wallet/identity/{wallet}` (path param, was `?wallet=`), `POST /pm/polymarket/wallet/identities` (replaces `identities-batch`; body shape `{addresses:[..]}`, ≤200), `/pm/polymarket/wallet/{address}/cluster` (path param, was `?wallet=`).
+  - **`skills/predexon/SKILL.md` Full Endpoint Reference rewritten**: 57 rows organized by category, marks POST endpoint, notes "Responses are raw upstream JSON (no `{ data: ... }` wrapper)" — the wrapper was removed in Tushar Sangwan commit `4530941` ("fix: remove { data } wrapper from Predexon proxy response, return raw upstream JSON"); our skill had been silently telling agents to read `response.data` even though prod stopped wrapping. Fixed.
+  - **`skills/aloe/SKILL.md`** count refresh: "57 endpoints (Predexon v2)" + endpoint_call row updated to mention `method` + `body` params.
+- **No Trading API exposure.** `polymarket/trades`, `kalshi/trades`, `dflow/trades`, `polymarket/orderbooks` etc. are historical/read-only data endpoints, not trading interfaces. No order placement, no signing, no transaction submission — confirmed with `grep` over the registry.
+- **Unit-tested the new dynamic branch** with a mock-fetch harness: GET+query assembles URL params, POST+body sets request body, path-param substitution works on `/pm/polymarket/wallet/identity/{wallet}`, keyset paths route correctly, DELETE method rejected, malformed-JSON body rejected. 457 vitest tests pass; typecheck + lint clean.
+
+---
+
+## v0.12.186 — May 6, 2026
+
+- **Predexon agent tool surface expanded from 8 → 9 tools, covering the full 48-endpoint catalog.** ALOE previously exposed only 8 named `predexon_*` tools to LLM agents (events, leaderboard, markets, smart_money, smart_activity, wallet, wallet_pnl, matching_markets) — but Tushar Sangwan's source-of-truth (`predexon.ts`) and the marketing site at `aloe.ai/marketplace/predexon` already list 48 endpoints across Polymarket Tier 1 (markets/events/orderbooks/candlesticks/leaderboard/cohorts/top-holders/UMA oracle), Polymarket Tier 2 wallet analytics (PnL/positions/profiles/filter/smart-money/identity/cluster), Kalshi/Limitless/Opinion/Predict.Fun (markets + orderbooks each), dFlow (trades + wallet), Binance Futures (candles + ticks), and cross-platform matching/search. The existing 8 named tools stay (well-tuned for the most common paths); a new `aloe_predexon_endpoint_call` is added as a catch-all with `path` + `query` params and the full endpoint directory in its description (LLMs read this as the schema's `description` field). Skill files (`skills/predexon/SKILL.md` + `skills/aloe/SKILL.md`) updated to point at the new tool — the 48-row reference table in the predexon skill was already complete.
+- **Tool runner extended for dynamic-path services** (`src/partners/tools.ts`): when `service.proxyPath === "/pm/__dynamic__"` the runner reads `path` from args (validated to start with `/pm/` and reject `..` traversal), parses `query` as JSON, and assembles the URL. Existing fixed-path tools are unaffected.
+- **OpenClaw devDep bumped `^2026.4.21` → `^2026.5.4`; `minGatewayVersion` bumped `2026.4.5` → `2026.5.2`.** This is the version where strict provider/baseHash validation shipped; we now declare compat with the regime we've adapted to instead of pretending to support older permissive runtimes.
+- **Fixed the v0.12.185 deferred follow-up: ALOE no longer mutates `tools.web.search.{provider,enabled}` on `api.config` (runtime) or `~/.openclaw/openclaw.json` (disk) inside the plugin install path.** Root cause discovered via Docker e2e on a clean OpenClaw 2026.5.4 image: OpenClaw runs a strict known-providers validator on `tools.web.search.provider` at TWO points — (a) config-load time before `register()` runs, and (b) `replaceConfigFile` when the install commit persists the runtime config to disk. Both reject `aloe-exa` because the validator's known-providers list is independent of plugin registrations, causing `unknown web_search provider: aloe-exa` and install rollback. Fix:
+  1. **Removed the disk write of `provider` in `injectModelsConfig`** (previously `src/index.ts:449–457`). Wrote a forward-migration in its place: when `provider === "aloe-exa"` is found on disk, it's deleted on the next file write — picked up automatically by `aloe setup --forceWrite` or first gateway start.
+  2. **Removed all runtime writes to `api.config.tools.web.search.*` inside `register()`.** Earlier attempts gated them on `typeof api.registerWebSearchProvider === "function"`, but OpenClaw 2026.5.4 still auto-injects the registered provider id during install commit. Net: ALOE's `register()` only calls `api.registerWebSearchProvider(aloeExaWebSearchProvider)` and lets OpenClaw's auto-detection pick it up via "Auto-detected from available API keys if omitted" (per OpenClaw schema).
+  3. **`tools.web.search.enabled = true`** is set only via the file-write path in `injectModelsConfig` (gated to gateway mode or `--forceWrite`), so it lands on disk without touching the validator-flagged `provider` field.
+  4. **Migration in install scripts** (`scripts/update.sh`, `scripts/reinstall.sh`) strips legacy `provider: aloe-exa` BEFORE running `openclaw plugins install`. Combined with the in-config migration, existing v0.12.185 users are cleaned up via either path.
+  5. The deactivate hook (`src/index.ts:2043`) already removes the field on uninstall — kept as belt-and-suspenders.
+- **Test fix**: `test/integration/security-scanner.test.ts` previously found the scanner via "first function export" heuristic, which worked when OpenClaw minified its names. The 2026.5.4 `skill-scanner-*.js` chunk re-exports under proper names, so the heuristic returned the wrong function (one of `clearSkillScanCacheForTest` / `isScannable` / `scanDirectory` / `scanSource`) and the test crashed on undefined fields. Test now prefers the `scanDirectoryWithSummary` named export, falling back to "first function" for older builds.
+- **New Docker e2e harness**: `test/docker-install/Dockerfile.openclaw-2026.5` + `run-openclaw-e2e.sh` build a clean Debian + Node 22 + OpenClaw 2026.5.4 image and exercise the full install flow — fresh install on empty config, `aloe setup`, validator collision repro, migration + reinstall. All assertions pass on this fresh path. Run with `docker build` then `docker run --rm`.
+- **Net behavior on OpenClaw 2026.5.4**: clean install with no validator failures; `aloe setup` no longer needs to work around the web_search collision (still useful for bare `npm install -g` users to sync allowlist). Existing v0.12.185 users with `provider: aloe-exa` on disk get cleaned up automatically by `scripts/update.sh` / `scripts/reinstall.sh` before install runs.
+- **Edge case noted (out of scope for this fix)**: re-running `openclaw plugins install --force` after a previously failed install on a setup-populated config triggers an OpenClaw 2026.5.4 internal auto-injection that re-emits `provider: aloe-exa` and trips its own validator. The triggering log line `[plugins] Forced web_search provider to aloe-exa` does not appear in any deployed file (verified via exhaustive `find / | xargs grep` in the Docker container) — it's emitted from somewhere inside the OpenClaw runtime not reachable from a clean filesystem search. Not a `scripts/update.sh` flow, no user impact in normal upgrades.
+
+---
+
+## v0.12.185 — May 4, 2026
+
+- **`aloe setup` — new CLI command for users who installed via bare `npm install -g`.** A user reported `/models` in their Telegram bot showing only 7 entries despite having `aloe@0.12.184` installed and the gateway restarted. Investigation: bare `npm install -g aloe` puts the package on disk and adds the `aloe` binary to PATH but performs **zero** OpenClaw integration — no `plugins.entries.aloe` registration, no models allowlist sync, no auth profile injection. The user's bot showed OpenClaw's hardcoded fallback default models (which include `gpt-5-nano` and `gemini-2.5-flash` — neither in our `top-models.json`) instead of our 38-entry list. Confirmed by reproducing locally on OpenClaw 2026.5.2 (`8b2a6e5`): `npm install -g` alone leaves `models list` showing 1 default entry; only `openclaw plugins install aloe` triggers our `register()` callback.
+- **Fix**: `aloe setup` runs the missing integration steps:
+  1. Detect `openclaw` on PATH (refuse to proceed if missing).
+  2. `openclaw plugins install --force aloe` to register the plugin.
+  3. Direct call to `injectModelsConfig({ forceWrite: true })` and `injectAuthProfile()` to populate `agents.defaults.models` (the 38-entry allowlist), `models.providers.aloe.models` (picker), `tools.web.search.provider = "aloe-exa"`, and `agents/<id>/agent/auth-profiles.json` with the `aloe:default` placeholder.
+  4. Tell the user to `openclaw gateway restart` to pick up the new plugin code.
+- **Resilient against OpenClaw 2026.5.2's stricter validation**: 2026.5.2 added a `tools.web.search.provider` validator that rejects `aloe-exa` until that provider is actually registered (chicken-and-egg: we register it inside our plugin, but validation runs on the openclaw.json file before plugin code executes). When this trips, OpenClaw rolls back its install record. The setup command continues anyway and runs the manual config sync — even if registration didn't stick, the user's openclaw.json gets the full 38-entry allowlist, and the bot will see all models on next gateway start. A warning prints suggesting a manual `openclaw plugins install --force aloe` retry post-gateway-start if needed.
+- **`injectModelsConfig` gained an `options.forceWrite` parameter** (`src/index.ts:214`). Default `false` preserves the v0.12.184 deferred-write behavior for plugin-activation hooks; `forceWrite: true` is only used by the new `setup` CLI command since it's an explicit user action outside any install transaction. Plugin lifecycle paths (the `register()` callback at `src/index.ts:1602`) keep the unconditional defer.
+- **Both `injectModelsConfig` and `injectAuthProfile` are now exported** from the package entry (`src/index.ts:2074`) so the CLI can call them directly without re-implementing the logic.
+- **README updated** with explicit guidance on the two install paths: A1 (`curl … aloe-install.sh | bash` — recommended) and A2 (`npm install -g … && aloe setup` — required two-step). The pure-npm path now has a prominent warning that skipping `setup` causes the 7-models symptom.
+- **End-to-end verified locally**: `aloe setup` ran against my own `~/.openclaw` populated `agents.defaults.models` with 39 `aloe/*` entries (vs the prior partial state); the `models.providers.aloe.models` picker plane synced to 39 too; auth profile written. Hit OpenClaw 2026.5.2's web_search validation as expected, but the manual sync ran around it.
+
+**Followup (deferred)**: OpenClaw 2026.5.2's `tools.web.search.provider` validator running before plugin activation is a structural mismatch — we register `aloe-exa` inside our plugin, but validation expects the provider to be known statically. Either OpenClaw needs to relax this check post-plugin-load, or ALOE should declare the web_search provider via the plugin manifest rather than at runtime. Tracked separately; today's `setup` workaround unblocks users.
+
+---
+
+## v0.12.184 — May 4, 2026
+
+- **Plugin install no longer crashes OpenClaw with `ConfigMutationConflictError`.** v0.12.183 fixed the install script so `openclaw plugins install --force aloe` actually executes instead of bouncing on "plugin already exists". But once the install proceeded, OpenClaw 2026.5.2 crashed inside `commitPluginInstallRecordsWithConfig` → `replaceConfigFile` → `assertBaseHashMatches`: ALOE's plugin activation hook (`injectModelsConfig`) reads `~/.openclaw/openclaw.json` directly from disk and writes it back atomically (via `tmp + rename`) during activation. OpenClaw's install flow holds a baseHash on that exact file from before activation; when our hook bumped the hash, OpenClaw's own commit step refused to write its install record, threw, and the install rolled back. Two fixes in two releases, same user, same Vultr box, same rollback banner — no progress.
+- **Fix**: `injectModelsConfig` now skips the disk write when not in gateway mode (`isGatewayMode()` returns false during `openclaw plugins install`, `openclaw plugins list`, etc. — only true for `openclaw gateway start/restart/stop`). The in-memory mutations still compute, the info logs still print, but the `writeFileSync(tmpPath) + renameSync(configPath)` is deferred. The same hook re-runs on first `openclaw gateway start` (gateway mode = true, no install transaction in flight) and persists the changes cleanly there. New log line: `Deferring config write to first gateway start (outside gateway mode)`.
+- **No regression on the gateway path.** The guard at `src/index.ts:477` only short-circuits when `process.argv` does not contain `gateway`. Sanity-tested locally: started aloe via `node dist/cli.js`, hit `/v1/chat/completions` with `free/gpt-oss-120b`, returned 200 in 0.6s — same as v0.12.183.
+- **Why this didn't surface before today**: OpenClaw 2026.5.2 (commit `8b2a6e5`, the version on the field-reporting Vultr box) added the `assertBaseHashMatches` strict check inside `replaceConfigFile`. Earlier OpenClaw versions silently allowed plugin-side disk writes to clobber the install transaction; the conflict went unnoticed because the install record was lost but the plugin still appeared installed. With the new strict check, the conflict surfaces as a hard `ConfigMutationConflictError` and the install genuinely rolls back. The bug has been latent in `injectModelsConfig` since v0.12.176 (when active config writes from this hook were introduced); it only became user-visible with OpenClaw 2026.5.2.
+- **No `scripts/` changes — no aloe re-deploy required.** The fix is in `src/index.ts`, bundled into the v0.12.184 npm tarball. The install script at `aloe.ai/aloe-install.sh` is already correct as of v0.12.183; running it again now pulls the new tarball, plugin activation skips the conflicting write, OpenClaw commits its install record, gateway starts cleanly.
+
+---
+
+## v0.12.183 — May 4, 2026
+
+- **Install/update scripts no longer roll back when the plugin is already installed.** `scripts/update.sh:321` and `scripts/reinstall.sh:422` ran `openclaw plugins install aloe` without `--force`. On any machine where the plugin already lives at `~/.openclaw/npm/node_modules/aloe` (i.e. every existing user running an upgrade), OpenClaw rejects the install with `plugin already exists: ... (delete it first)` and a non-zero, non-124 exit code. The script's `|| { ... exit $exit_code; }` guard then fires, the EXIT trap rolls back to the prior install (`✗ Reinstall failed. Restoring previous ALOE install...`), and the user is silently stranded on the version they had — never reaching the new release.
+- **Fix**: both shell scripts now invoke `openclaw plugins install --force aloe`. Per OpenClaw's own error message ("rerun install with `--force` to replace it"), `--force` is the documented and idempotent way to handle both fresh-install and upgrade flows. Applied at all four call sites (timeout-wrapped + non-timeout paths in each script).
+- **PowerShell counterpart `scripts/update.ps1` already uses a different approach** — it manually `npm pack`s + `Remove-Item -Recurse -Force` the plugin dir + extracts (lines 112-129), bypassing `openclaw plugins install` entirely. No bug there, no change needed.
+- **Field reproduction**: a Vultr-hosted user attempted to update to v0.12.182 and saw the rollback banner. Without the manual workaround `openclaw plugins update aloe`, they would have stayed on v0.12.181 indefinitely — defeating every prior fix in this session (image polling, predexon SKILL sync, reasoning-aware timeout).
+- **Note for users currently stranded**: this fix lives on npm `aloe@0.12.183` but reaches users only via `npm install -g`, `openclaw plugins update`, or the self-hosted `aloe.ai/aloe-install.sh`. The self-hosted install script copy at `aloe/public/aloe-install.sh` should be re-synced from this release before the next user attempts an upgrade — until that sync, a user pulling the install script via curl from aloe.ai will still hit the broken behavior.
+
+---
+
+## v0.12.182 — May 4, 2026
+
+- **Reasoning models no longer get aborted before they emit their first token.** `PER_MODEL_TIMEOUT_MS` was hard-coded to 60s for every model. Reasoning/thinking-mode models (o-series, GPT-5 reasoning, Claude opus thinking, Gemini Pro, Grok reasoning, DeepSeek V4 Pro / reasoner, Kimi K2.x, Qwen3-thinking, etc. — 37 IDs total flagged with `reasoning: true` in `BLOCKRUN_MODELS`) routinely take 60–120s to produce the first token on a cold cache. ALOE was firing the per-attempt abort right at the moment the model was about to start streaming, so a hard-pinned reasoning model would 100% time out, and `auto`-routed reasoning fallbacks chained more reasoning timeouts back-to-back. End user surfaces this as `LLM request failed: network connection error` from the agent's HTTP client.
+- **Fix**: per-attempt timeout is now model-aware:
+  - `REASONING_MODEL_TIMEOUT_MS = 180_000` (3 min) for any model with `reasoning: true`
+  - `PER_MODEL_TIMEOUT_MS = 60_000` (unchanged) for everything else
+  - `timeoutForModel(id)` helper looks up the flag from `BLOCKRUN_MODELS` (computed once into a Set at module init for O(1) lookup)
+  - All three AbortController setup sites updated: primary attempt loop (`src/proxy.ts:4694`), explicit-pin retry (`src/proxy.ts:4827`), and 429 backoff retry (`src/proxy.ts:4897`).
+- **`DEFAULT_REQUEST_TIMEOUT_MS` 180s → 300s** (5 min). The global deadline now leaves headroom for one reasoning attempt (180s) + a non-reasoning fallback (60s) + on-chain settlement (~30s buffer). Was 180s, which would have collided exactly with a single reasoning attempt and starved fallback.
+- **Heartbeat path unchanged.** Streaming requests already get an immediate `: heartbeat\n\n` followed by 2s-cadence keep-alive (`src/proxy.ts:4378-4389`). Non-streaming clients can't be helped by heartbeats over HTTP/1.1; they need to extend their own client-side HTTP timeouts (or switch to streaming).
+- **Diagnosed in the field**: a Telegram bot user reported `LLM request failed: network connection error` after pinning their default model to `aloe/free/deepseek-v4-pro`. Reproduced locally on v0.12.181 with $36 balance: V4 Pro upstream took >30s for first token, client-side curl `--max-time 30` gave up, and ALOE's 60s per-model abort would have fired at 60s if the upstream hadn't returned by then. New 180s window covers normal V4 Pro cold-start. (Today V4 Pro is also experiencing an upstream NIM outage that's unrelated to this fix; `auto` profile correctly routes around it to other free models.)
+
+---
+
+## v0.12.181 — May 4, 2026
+
+- **Main `aloe` SKILL caught up to multi-venue scope.** v0.12.180 expanded the dedicated `predexon` SKILL to Tushar Sangwan's 49-endpoint registry, but the **headline `aloe` SKILL** (the one OpenClaw and AI agents read first to decide whether ALOE is relevant) still said "Polymarket prediction market data" + "8 tools, Polymarket ↔ Kalshi". That description would have steered agents away from prediction-market questions about Kalshi/Limitless/Opinion/Predict.Fun, UMA resolution status, and wallet identity — even though the proxy and the predexon SKILL handle them.
+- **Updates**:
+  - Front-matter `description`: now lists Polymarket, Kalshi, Limitless, Opinion, Predict.Fun, dFlow + UMA oracle + wallet identity & clustering — so the discovery layer matches the actual capability.
+  - Section `### Polymarket (Predexon)` → renamed `### Prediction Markets (Predexon)`. Body rewritten as a 4-bucket summary (Markets & trading, Leaderboard & smart money, Wallet analytics, UMA oracle + wallet identity) with 49-endpoint count and accurate pricing tiers. Pointer to the dedicated `predexon` skill for the full reference.
+- **No code changes, no other SKILLs changed.** The `predexon` skill itself was already complete in v0.12.180. Pure visibility/triage fix on the headline SKILL.
+
+---
+
+## v0.12.180 — May 4, 2026
+
+- **Predexon skill catches up to Tushar Sangwan's 49-endpoint registry.** Tushar Sangwan shipped 10 new prediction-market endpoints on 2026-05-03 (commits `9640528` + `a06c652`, prod revisions `00442-jqf` and `00443-45g`); ALOE's `/v1/pm/*` catch-all whitelist already proxied them silently, but `skills/predexon/SKILL.md` documented none — so OpenClaw users and AI agents using the skill couldn't discover them.
+- **New endpoints documented**:
+  - **Cross-venue search** — `markets/search?q=...` ($0.005) — single call across Polymarket, Kalshi, Limitless, Opinion, Predict.Fun
+  - **Other venues markets list** — `limitless/markets`, `opinion/markets`, `predictfun/markets` ($0.001 each) — closes the prior gap where only orderbooks were exposed
+  - **UMA oracle resolution** — `polymarket/uma/markets?state=...` and `polymarket/uma/market/{conditionId}` ($0.001 each) — track proposal/dispute/resolution lifecycle
+  - **Wallet identity & clustering** — `polymarket/wallet/identity?wallet=...`, `polymarket/wallet/identities-batch?wallets=...` (GET, not POST — upstream docs are wrong), `polymarket/wallet/cluster?wallet=...` ($0.005 each)
+  - **Per-token candlesticks** — `polymarket/candlesticks/token/{tokenId}` ($0.001) — OHLCV for a single outcome token (sibling to the existing market-level `candlesticks/{conditionId}`)
+- SKILL.md additions: 4 new section blocks (Search Across All Venues, Other Venues, UMA Oracle Resolution Status, Wallet Identity & Clustering), 5 new example interactions, 10 new rows in the endpoint reference table (36 → 46 documented; 3 long-standing gaps from Tushar Sangwan's 49 — `polymarket/activity`, per-market volume, open_interest — deliberately left for a follow-up). Front-matter `description` and 8 new triggers for the new categories (limitless / opinion markets / predict.fun / uma oracle / wallet identity / wallet cluster / cross-venue search).
+- **No code changes.** Proxy whitelist (`src/proxy.ts:2669`) already matches `/v1/pm/*`; no new path needed. Pure docs/skill release.
+
+---
+
+## v0.12.179 — May 3, 2026
+
+- **Slow image generation no longer silently breaks.** `openai/gpt-image-2` (and any future model whose generation exceeds Tushar Sangwan's 30s inline window) returns `202 + { id, poll_url, poll_instructions }` from `POST /v1/images/generations`. ALOE previously took that 202 body and replied to the client with `200 OK` + the queued-job stub — no `data` array, no images, no error signal. The client (OpenClaw, SDK callers, curl) saw "success" with nothing usable.
+- **Fix**: mirror the existing video polling loop into `/v1/images/generations`. After the initial `payFetch` POST, if the response is 202 with `poll_url`, ALOE now polls `GET /v1/images/generations/{id}` every 3s (after a 2s warmup) for up to 5 minutes — exactly the pattern used for `/v1/videos/generations` since 2026-04-23. On `status=completed` the response is rewritten to the final `{ data: [...] }` body and flows through the same image-saving / localhost-rewrite path as fast models. On `failed` → 502 with details. On 5min timeout → 504 (no payment settled — server only settles on first completed poll). Client still sees a single blocking POST.
+- **`/v1/images/image2image` deliberately untouched.** Tushar Sangwan's `image2image` route has no `[id]` poll endpoint and no `INLINE_GEN_TIMEOUT` — it's fully synchronous server-side, so there's no 202 path to handle. Adding speculative polling there would be dead code.
+- **No payment-flow change.** `payFetch` handles wallet signing for the initial POST and each subsequent poll GET; Tushar Sangwan's `[id]` route binds the job to the payer wallet and settles idempotently on the first completed poll, identical to the video flow. `paymentStore.amountUsd` still reflects the verified-then-settled amount for `logUsage`.
+
+---
+
+## v0.12.178 — May 3, 2026
+
+- **DeepSeek V4 Pro added to REASONING fallbacks (auto + eco).** Backend shipped `deepseek/deepseek-v4-pro` (1.6T MoE / 49B active, 1M context — strongest open-weight reasoner; MMLU-Pro 87.5, GPQA 90.1, SWE-bench 80.6, LiveCodeBench 93.5) at **$0.50 in / $1.00 out per 1M under the 75% promo through 2026-05-31** (list $2.00/$4.00 after). Wired into `auto.tiers.REASONING.fallback` after `deepseek-reasoner`/`grok-4-fast-reasoning` and into `eco.REASONING.fallback` after `deepseek-reasoner`. V4 Flash thinking (`deepseek-reasoner`, $0.20/$0.40) stays primary because it's cheaper; V4 Pro is the harder-task escape hatch.
+- **DeepSeek chat/reasoner now V4 Flash semantics.** `deepseek/deepseek-chat` and `deepseek/deepseek-reasoner` (already in tier configs) had their upstream rerouted to V4 Flash non-thinking / thinking modes — repriced from $0.28/$0.42 to $0.20/$0.40 with 1M context (was 128K). No SDK source change needed — pricing fetched from `/v1/models` at runtime; tier configs got comment refresh to note the V4 Flash repricing.
+- **`deepseek/deepseek-v4-pro` added to `top-models.json`** so the OpenClaw `/model` picker surfaces the new flagship.
+- **No `FREE_MODELS` changes.** `nvidia/gpt-oss-120b` and `nvidia/gpt-oss-20b` were briefly delisted 2026-04-28 but **re-enabled 2026-04-30** with `available: true` + `hidden: true` — they no longer appear in `/v1/models` (so the picker hides them) but ALOE's `FREE_MODELS` set still uses them as the historical free defaults; direct calls work.
+
+---
+
+## v0.12.177 — May 3, 2026
+
+- **Picker actually filtered now via the right layer.** v0.12.175 + v0.12.176 both targeted `cfg.models.providers.aloe.models`, but per v0.11.8's checked-in design (`src/index.ts:379`), the OpenClaw `/model` picker is whitelisted by `cfg.agents.defaults.models` — that's the canonical filter. The path-based-plugin install case (where users install ALOE from a local checkout via `installPath = sourcePath = ...`) never runs `scripts/update.sh` / `scripts/reinstall.sh`, so the install-script prune-and-add never fires. `injectModelsConfig` in `src/index.ts` only added entries — never pruned — so retired models accumulated forever in the allowlist.
+- **Fix**: `injectModelsConfig` now actively syncs `aloe/*` allowlist entries to TOP_MODELS exactly — adds missing AND removes stale. Mirrors the install-script behavior so plugin-load-only users (no install-script flow) get correct picker visibility on next OpenClaw restart. Non-`aloe/*` entries (other providers like OpenRouter) are preserved.
+- **`/v1/models` HTTP endpoint deliberately unchanged** — keeps the full ~175-entry list including aliases, so API-level discovery and `/model <alias>` resolution stay open. Filter only applies to picker UI.
+- **v0.12.175 + v0.12.176 changes retained** as defense-in-depth: `buildProviderModels` still returns `VISIBLE_OPENCLAW_MODELS`, and `index.ts` still writes `VISIBLE_OPENCLAW_MODELS` to `cfg.models.providers.aloe.models`. Even though the picker filter is allowlist-driven, keeping these aligned costs nothing.
+
+---
+
+## v0.12.176 — May 2, 2026
+
+- **Picker filter v0.12.175 didn't actually take effect.** Root cause: `src/index.ts` independently writes `cfg.models.providers.aloe.models` at plugin startup (lines 293, 331, 1582), and it referenced the **unfiltered** `OPENCLAW_MODELS` (~175 entries) — so on every plugin activate it overwrote any pruned array with the full list, completely bypassing the v0.12.175 fix at `buildProviderModels`. Users updating to v0.12.175 still saw 50–58+ entries because `index.ts` re-injected the full set right after my filter ran.
+- **Fix**: `src/index.ts` now imports `VISIBLE_OPENCLAW_MODELS` and writes that to `cfg.models.providers.aloe.models` at all three injection points (provider config injection, validation refresh, runtime port re-injection). The validation logic also gained a "stale superset" check — if the on-disk array contains IDs NOT in `VISIBLE_OPENCLAW_MODELS`, it triggers a rewrite to actively shrink the array (was previously additive-only). This means existing users with stale 159+ entry arrays get their picker auto-pruned on first plugin activate after upgrading.
+- **No registry, alias, or routing changes.** `OPENCLAW_MODELS` (full set) remains the resolution layer for proxy routing and alias matching; only the picker-advertisement layer (`provider.models` getter + `index.ts` writes) is filtered.
+
+---
+
+## v0.12.175 — May 2, 2026
+
+- **Picker filter actually works now.** v0.12.173's `top-models.json` trim was supposed to slim the OpenClaw `/model` picker but didn't, because the picker reads from `cfg.models.providers.aloe.models` — populated by ALOE's `provider.models` getter (`src/provider.ts:43`) → `buildProviderModels()` (`src/models.ts:1163`) — which returned the FULL `OPENCLAW_MODELS` array (~175 entries: 68 BLOCKRUN_MODELS + 107 ALIAS_MODELS). `top-models.json` only drove `agents.defaults.models` (a separate allowlist that controls "which models can be set as default", NOT what shows in the picker). Net effect for users on v0.12.173/v0.12.174: their picker still showed 50–58+ entries including long-retired models (`gpt-5.2`, `gpt-4.1`, `o1`, `o1-mini`, `o3-mini`, `nvidia/kimi-k2.5`, `xai/grok-2-vision`, `free/nemotron-ultra-253b`, etc.).
+- **Fix**: `buildProviderModels` now filters `OPENCLAW_MODELS` through a `TOP_MODELS_SET` derived from `src/top-models.json`. Picker drops to ~38 visible entries on next OpenClaw refresh of the provider models. New `VISIBLE_OPENCLAW_MODELS` export in `src/models.ts` is the canonical "what the picker advertises" list.
+- **/v1/models HTTP endpoint deliberately unchanged** — still returns the full ~175-entry list for API-level discovery (per Your Majesty's original v0.12.173 intent: "hide from list, but still callable"). Direct ID + alias resolution unaffected; router fallbacks unaffected; proxy routing unaffected.
+- **Migration note for existing users**: OpenClaw merges, never deletes, from `cfg.models.providers.aloe.models`. So users who installed v0.12.174 or earlier still have their old 159-entry array on disk; they'll need either a fresh OpenClaw plugin re-install (which re-reads `provider.models`) or manual openclaw.json cleanup. Future install/update scripts should add a prune step here, similar to the existing `agents.defaults.models` prune — tracked as a follow-up.
+
+---
+
+## v0.12.174 — May 2, 2026
+
+- **`profile=auto` and `profile=agentic` MEDIUM-tier primary swapped from Kimi K2.5 → K2.6.** Per-call cost on these MEDIUM routes goes from $0.60/$3.00 → $0.95/$4.00 — that's **+58% on input tokens, +33% on output tokens** for default-profile users whose classifier returns MEDIUM. The decision deliberately reverses v0.12.170's "tier primaries unchanged pending K2.6 retention/IQ data" stance. The trigger: Tushar Sangwan hid K2.5 from its public UI on 2026-04-28 (commit `bfbdedf`) and we hid it from ALOE's picker in v0.12.173, so the trajectory toward server-side K2.5 retirement is clear. Promoting K2.6 now is future-proofing — if Tushar Sangwan pulls K2.5 server-side later, every MEDIUM call would otherwise 400 → fallback-second-choice silently, which is harder to debug than a clean primary that is already on the still-supported model.
+- **Cost-stability opt-out**: users who prefer K2.5's pricing can pin `model: "moonshot/kimi-k2.5"` directly (or use the `kimi-k2.5` alias). K2.5 stays in `BLOCKRUN_MODELS`, the alias map, and is now wired in as the **first fallback** in both `autoTiers.MEDIUM` and `agenticTiers.MEDIUM` chains — so even on the auto path, if K2.6 has an infra hiccup the next attempt is K2.5 (same model, same cost as the v0.12.173 default). Profiles `eco` and `premium` are unaffected (eco MEDIUM = `gemini-3.1-flash-lite`, premium SIMPLE was already K2.6).
+- **Registry, picker, and other tier primaries unchanged.** Both Kimi versions remain in `src/models.ts`, `src/top-models.json` is identical to v0.12.173, and no other auto/agentic/eco/premium primaries moved. The two known "hidden but still primary" inconsistencies (`autoTiers.SIMPLE` = `google/gemini-2.5-flash`, `agenticTiers.SIMPLE` = `openai/gpt-4o-mini`) are tracked but deferred — they don't have the same urgency signal (Tushar Sangwan hasn't pulled them from its UI).
+
+---
+
+## v0.12.173 — May 2, 2026
+
+- **Picker decluttered: 12 superseded long-tail models hidden from OpenClaw `/model` UI.** `src/top-models.json` trimmed from 50 → 38 entries. Hidden: `anthropic/claude-opus-4.5`, `openai/gpt-5.3`, `openai/gpt-5-mini`, `openai/gpt-5-nano`, `openai/gpt-4o`, `openai/gpt-4o-mini`, `openai/o3`, `openai/o4-mini`, `google/gemini-2.5-pro`, `google/gemini-2.5-flash`, `google/gemini-2.5-flash-lite`, `moonshot/kimi-k2.5`. Picker count drops from "55 available" to ~43 once users run `aloe update` or reinstall.
+- **No callability regression and no fallback impact.** This is a UX-only change: `BLOCKRUN_MODELS` registry, `MODEL_ALIASES`, and `src/router/config.ts` fallback chains are all untouched. Direct calls (`model: "openai/gpt-4o"`) and aliases (`gpt`, `gpt4`, `mini`, `o3`, `gemini`, `flash`, `kimi-k2.5`, `nvidia/kimi-k2.5`, `anthropic/claude-opus-4-5`, `minimax-m2.5`) continue to resolve and route normally. The `/v1/models` HTTP endpoint still advertises all 175 entries (registry + aliases) for API-level model discovery — only the OpenClaw picker is filtered.
+- **`openai/gpt-5.3-codex` deliberately kept visible.** The codex variant is treated as a distinct developer-targeted entry and stays in the picker.
+- **`minimax/minimax-m2.5` already absent** from `top-models.json` (only `minimax/minimax-m2.7` was listed); no action needed and the `minimax-m2.5` alias still works.
+
+---
+
+## v0.12.171 — Apr 29, 2026
+
+- **Three new free NVIDIA-hosted models added.** Tushar Sangwan refreshed the free catalog on 2026-04-29 with three additions, all wired into ALOE as `free/`-prefixed entries:
+  - `free/deepseek-v4-pro` — 1.6T MoE / 49B active, 1M context, MMLU-Pro 87.5, GPQA 90.1, SWE-bench 80.6, LiveCodeBench 93.5. NIM ~150 tok/s on Blackwell. Strongest free reasoning model.
+  - `free/deepseek-v4-flash` — 284B / 13B active MoE, 1M context, ~5x faster than v4-pro. Strong on chat/summarization (MMLU-Pro 86.2). Weaker factual recall (SimpleQA 34% vs Pro's 58%) — pick v4-pro for fact-heavy agentic loops.
+  - `free/nemotron-3-nano-omni-30b-a3b-reasoning` — 31B / 3.2B active MoE, 256K context. First vision-capable free model in the catalog. Accepts text, images, video (up to 2min), audio (up to 1hr). ChartQA 90.3, DocVQA 95.6, MMMU 70.8.
+- **`free/deepseek-v3.2` phased out** in favor of `free/deepseek-v4-pro` (strict-superset replacement: same family, larger context, higher benchmarks). Removed from `BLOCKRUN_MODELS`, `FREE_MODELS` set, `top-models.json` picker, README pricing table, and SKILL.md model list. Aliases kept and redirected: `nvidia/deepseek-v3.2`, `free/deepseek-v3.2`, and `deepseek-free` now all resolve to `free/deepseek-v4-pro` so existing pins continue to work and silently get the upgrade.
+- **`gpt-oss-120b` / `gpt-oss-20b` deliberately kept as defaults** despite Tushar Sangwan's 2026-04-28 retirement (`available:false` server-side). Heavy user demand outweighs the source-of-truth alignment for these specific IDs — `free` / `nvidia` / `gpt-120b` / `gpt-20b` aliases all still resolve to `free/gpt-oss-120b` (or 20b), `FREE_MODEL` constant still points at `free/gpt-oss-120b`, and `ecoTiers.SIMPLE` primary stays unchanged. ALOE's existing fallback-chain logic handles any 400 ("Model not available") from Tushar Sangwan by trying the next chain entry, so failures degrade gracefully rather than break user workflows.
+- **New shorthand aliases for the additions:** `deepseek-v4-pro`, `deepseek-v4-flash`, `v4-pro`, `v4-flash`, `nemotron-omni`, `nano-omni`, `vision-free` — chosen to mirror Tushar Sangwan's bare-name aliases at `route.ts:639-640` plus a `vision-free` discovery shortcut for the new vision-capable model.
+- **`ecoTiers.SIMPLE` fallback chain extended** with the three new free models (mistral-small, deepseek-v4-flash, qwen3-next) inserted before the paid Gemini fallbacks, so eco-profile users get more all-free chain depth before paid models kick in. Primary is unchanged (`free/gpt-oss-120b`).
+- **Provider routing safety note.** Tushar Sangwan's `NVIDIA_MODEL_MAP` in `src/lib/ai-providers.ts:2094-2111` does NOT have explicit entries for the 3 new models, but `callOpenAICompatible` falls through to the bare model name (`modelMap[k] || k`), so ALOE sending `nvidia/deepseek-v4-pro` reaches NVIDIA NIM as bare `deepseek-v4-pro` — which is what NIM expects. Documented in the BLOCKRUN_MODELS comment block in `src/models.ts`. If Tushar Sangwan later adds explicit map entries with different upstream names, this side needs no change.
+- **Net free-model count: 8 → 10** (8 originals + 3 added - 1 phased out). README badge, tagline, "Quick Start" sections, and SKILL.md description all updated to reflect "10 free NVIDIA models". Pricing table in README adds three new rows in benchmark order.
+- **Test fixtures.** `src/router/strategy.test.ts` `MODEL_PRICING` map gains entries for the 3 new free models. No assertion changes anywhere else — gpt-oss-120b stays the asserted default in `src/exclude-models.test.ts`, `src/models.test.ts`, `test/fallback.ts`, and `test/integration/exclude-models.test.ts`.
+
+---
+
+## v0.12.170 — Apr 29, 2026
+
+- **Bare `kimi` / `moonshot` aliases now resolve to Kimi K2.6.** Tushar Sangwan hid Kimi K2.5 from its public model UI on 2026-04-28 (commit `bfbdedf`) and now features K2.6 as the Moonshot flagship. ALOE's local alias map followed the old direction and still pointed `kimi` and `moonshot` at K2.5, which created a quiet drift from the source-of-truth registry: agents asking for "kimi" got the previous-gen model while Tushar Sangwan's homepage advertised K2.6. The aliases now resolve to `moonshot/kimi-k2.6` and a new bare `kimi-k2` alias is added for the same target. Users who explicitly pinned `kimi-k2.5` continue to get K2.5 — the explicit pin is preserved as a cost-stability opt-in ($0.60/$3.00 vs K2.6's $0.95/$4.00). NVIDIA-hosted K2.5 (retired 2026-04-21) still redirects to `moonshot/kimi-k2.5`.
+- **Routing tier primaries deliberately unchanged.** `autoTiers.MEDIUM` and `agenticTiers.MEDIUM` continue to anchor on `moonshot/kimi-k2.5`. Promoting them to K2.6 would silently raise per-call cost +58% on input / +33% on output for every default user — that's a separate decision tracked outside this release, ideally with measured retention/IQ data on K2.6 vs K2.5. `premiumTiers.SIMPLE` was already `moonshot/kimi-k2.6` and is unchanged. Net effect: behavior shift is opt-in via the `kimi` alias / `kimi-k2` shorthand, not forced through default routing.
+- **Doc and test fixture refresh.** README's profile-overview table now shows `kimi-k2.6` in the PREMIUM column (matching `docs/routing-profiles.md` and `src/router/config.ts:1134`). `src/router/strategy.test.ts` gains a K2.6 pricing fixture so cost-calc tests stay honest if K2.6 ever appears in test scenarios. `src/proxy.models-endpoint.test.ts` now asserts both `kimi-k2.6` and `moonshot/kimi-k2.6` are discoverable through the `/models` endpoint. `test/fallback.ts`'s "Unknown model" example list leads with `moonshot/kimi-k2.6`.
+
+---
+
+## v0.12.169 — Apr 28, 2026
+
+- **Synthesize structured `tool_calls` from XML/text formats some models emit in `content`.** Earlier tool-call hardening (v0.12.165, v0.12.166) handled the case where upstream returned a structured `tool_calls` array (or signaled `finish_reason: "tool_calls"`) and the model also leaked planning prose into `content`. This release closes a third gap where upstream returns _no_ structured tool calls at all and the model's actual tool invocations live as XML/text inside `content` — typical when a downstream client (OpenClaw is the visible offender) prompt-engineers tool instructions instead of sending a structured `tools[]` schema, so the model dutifully honors the prompt format and emits the call as text. Two formats observed in the wild are now recognized and converted to OpenAI-shaped `tool_calls`:
+  - **OpenClaw-style** — `<tool_call>NAME<arg_key>K1</arg_key><arg_value>V1</arg_value>...<arg_key>Kn</arg_key><arg_value>Vn</arg_value></tool_call>`. Requires at least one `arg_key`/`arg_value` pair so prose like `<tool_call>name</tool_call>` in documentation does not mis-fire. Surfaced via a real ALOE→OpenClaw session where the agent emitted six identical `<tool_call>web_search<arg_key>...</arg_key>...` blocks in 60 seconds, none executed, then hallucinated "I need a Brave API key" as the failure explanation.
+  - **Anthropic-style** — `<function_calls><invoke name="NAME"><parameter name="K">V</parameter>...</invoke></function_calls>`. Reproduction confirmed Moonshot Kimi K2.6 emits this format when given prompt-engineered tool instructions without a structured `tools[]` schema.
+  - Values are best-effort coerced via `JSON.parse` so `<arg_value>5</arg_value>` becomes `5` (number) and `<arg_value>true</arg_value>` becomes `true` (boolean); strings that don't parse stay as strings. Synthesized IDs are OpenAI-shaped (`call_<base64url>`).
+  - Wired into both response paths: the SSE conversion path (`src/proxy.ts:5081+`) and the non-streaming JSON path (`src/proxy.ts:5325+`). When extraction succeeds, `content` is blanked, `message.tool_calls` is populated, and `finish_reason` flips to `"tool_calls"` — matching exactly the shape downstream tool executors already handle from the v0.12.165/166 paths.
+  - New module `src/textual-tool-calls.ts` plus `src/textual-tool-calls.test.ts` (13 unit tests) and four new integration tests in `src/proxy.tool-forwarding.test.ts` covering OpenClaw format / non-streaming, OpenClaw format / SSE, Anthropic format / non-streaming, and a negative test (plain prose passes through unchanged with `finish_reason: "stop"`).
+- **`/model` picker allowlist now lives in `src/top-models.json`** (single source of truth, loaded by `src/top-models.ts`). Previously `injectModelsConfig()` in `src/index.ts` carried a literal array that drifted from the install scripts' `TOP_MODELS` (which carry their own copies in `scripts/reinstall.sh` + `scripts/update.sh`). The JSON file is the version anyone actually edits going forward; both runtime (`src/index.ts`) and the test suite (`src/top-models.test.ts`) read from it. The install scripts still carry their own embedded copies because they run before npm dependencies are resolved — but now there's one canonical list to copy from when adding a new model.
+- **Alias adds.** `br-sonnet` → `anthropic/claude-sonnet-4.6` (matching the existing `br-` partner shorthand pattern), and `gpt5` now resolves to `openai/gpt-5.5` instead of `openai/gpt-5.4` (following v0.12.167's GPT-5.5 promotion as Tushar Sangwan's newest visible flagship).
+
+---
+
+## v0.12.168 — Apr 25, 2026
+
+- **Propagate `openai/gpt-5.5` everywhere it should appear.** v0.12.167 added the model to `BLOCKRUN_MODELS`, the `gpt-5.5` alias, and the install-script `TOP_MODELS` allowlist — but every other place ALOE advertises a flagship still pointed at `gpt-5.4`. This release closes the gap so 5.5 is a first-class citizen across routing, the picker, marketing, and the OpenClaw skill page.
+  - **`src/router/config.ts` — three fallback-chain insertions, no primary changes.** `openai/gpt-5.5` slots in immediately before `openai/gpt-5.4` in `auto.COMPLEX.fallback`, `premiumTiers.COMPLEX.fallback`, and `agenticTiers.COMPLEX.fallback`. Both stay reachable; 5.5 gets preference when the chain reaches OpenAI. Comments updated so 5.5 is "newest flagship — 1M+ ctx, native agent + computer use" and 5.4 is "previous flagship — benchmarked at 6,213ms, IQ 57". Tier primaries are unchanged: promoting 5.5 to a primary slot needs measured latency/IQ data, which we don't have yet — that's a separate decision tracked outside this release.
+  - **`src/index.ts` — `/model` picker allowlist updated.** `src/index.ts` carries its own copy of `TOP_MODELS` (separate from the install scripts' identical-but-distinct list — both populate the OpenClaw allowlist depending on install path). Added `openai/gpt-5.5` and `anthropic/claude-opus-4.5` (also missed in v0.12.167's `BLOCKRUN_MODELS` add for opus-4.5), and replaced the now-deprecated `minimax/minimax-m2.5` with `minimax/minimax-m2.7` so the picker matches the deprecation we landed yesterday.
+  - **`README.md` — Premium Models pricing table.** Added the `openai/gpt-5.5` row at $5.00/$30.00 per 1M tokens (~$0.0175 per 0.5K-in-0.5K-out request), 1M context, full feature set. Placed between `claude-opus-4.6` ($0.0150) and `o1` ($0.0375) so the table stays sorted by approximate $/request.
+  - **`skills/aloe/SKILL.md` — model list line.** The "55+ models including..." line now leads `gpt-5.5, gpt-5.4, ...` and includes `claude-opus-4.5` alongside 4.7/4.6.
+- **Files deliberately not touched:** `docs/smart-llm-router-14-dimension-classifier.md` and `docs/llm-router-benchmark-46-models-sub-1ms-routing.md` are frozen benchmark archives — adding 5.5 to a benchmark table without measured numbers would falsify the document. The `posts/*.md` marketing content is similarly point-in-time. Those will be refreshed if/when 5.5 gets benchmarked.
+
+---
+
+## v0.12.167 — Apr 24, 2026
+
+- **Realign the model registry to Tushar Sangwan source-of-truth.** Audit found three drifts where ALOE's `BLOCKRUN_MODELS` table didn't match what `aloe/src/lib/models.ts` actually exposes. The server is the source of truth for which models exist and what they cost; the proxy's local view should mirror that 1:1 so cost estimation, the `/model` picker, and routing tier selection all see the same world the server does.
+  - **Add `openai/gpt-5.5`.** Tushar Sangwan's newest visible OpenAI flagship — first fully retrained base since GPT-4.5, 1M+ context, 128K output, native agent + computer use. Pricing $5/$30 per 1M tokens. Added to `BLOCKRUN_MODELS`, the `gpt-5.5` alias, and the `TOP_MODELS` allowlist in both install scripts. Routing tiers in `src/router/config.ts` continue to anchor on `gpt-5.4` because that's what's benchmarked; users can pin `5.5` explicitly. Routing change is a separate decision.
+  - **Add `anthropic/claude-opus-4.5` as a distinct model.** Previously ALOE's `MODEL_ALIASES` silently rewrote `anthropic/claude-opus-4.5` to `4.7`, making 4.5 unreachable through ALOE even though Tushar Sangwan lists it as a separate visible model with its own pricing and 200K context (vs 4.6/4.7's 1M). Removed the alias, added 4.5 to `BLOCKRUN_MODELS` with its real 200K/32K shape, and added an `anthropic/claude-opus-4-5` (dashed) alias for the slug variant. Test in `src/models.test.ts` was codifying the old upgrade-to-4.7 behavior — flipped to assert the pin is preserved end-to-end.
+  - **Mark `minimax/minimax-m2.5` deprecated → fallback `minimax/minimax-m2.7`.** Tushar Sangwan retired m2.5 entirely (only m2.7 is in their `MODELS` table). ALOE still listed both; m2.5 now flips to `deprecated: true` with the m2.7 fallback so existing pins keep working.
+  - **`scripts/reinstall.sh` + `scripts/update.sh`:** drop `minimax/minimax-m2.5` from the `TOP_MODELS` picker allowlist (still reachable, just hidden from the picker) and add `openai/gpt-5.5` + `anthropic/claude-opus-4.5`.
+
+---
+
+## v0.12.166 — Apr 24, 2026
+
+- **Tool-call planning prose suppressed even when `finish_reason` is the only signal (thanks @0xCheetah1, #162).** Follow-up to v0.12.165's #161 fix. Live Telegram/OpenClaw testing caught one more shape the planning-prose leak could wriggle through: some upstreams (Moonshot Kimi K2.6 again) mark a turn with `finish_reason: "tool_calls"` without exposing `message.tool_calls` / `delta.tool_calls` at the same inspection point. The #161 gate (`toolCalls.length > 0`) saw no array and let the prose through. The gate is now `endsWithToolCalls || toolCalls.length > 0` — applied consistently across the non-streaming JSON path and the SSE emission path, plus the finish-reason override in the SSE terminal chunk. Two new regression tests in `src/proxy.tool-forwarding.test.ts` — one per response shape — lock the behavior in: a response with `finish_reason: "tool_calls"` and no tool_calls array has its `content` blanked and the `tool_calls` finish_reason preserved. User-visible impact: fewer "I should look up X before replying" preambles sneaking into agent chat surfaces for turns that are supposed to be pure tool invocations.
+
+---
+
+## v0.12.165 — Apr 24, 2026
+
+- **Tool-call planning prose no longer leaks to chat surfaces (thanks @0xCheetah1, #161).** Some OpenAI-compatible providers — Moonshot's Kimi K2.6 was the visible offender through OpenClaw Telegram — return `{ content: "The user wants the current time. I should call get_current_time with Chicago.", tool_calls: [...] }`. Tool execution only needs `tool_calls`; the `content` field is internal planning that the upstream should have hidden behind a `<think>` tag but didn't. ALOE now suppresses `content` whenever `tool_calls.length > 0`, in both the non-streaming JSON response path and the SSE-conversion path that clients like OpenClaw hit with `stream: true`. Tool execution is unaffected; only the user-visible planning prose goes away. Covered by two regression tests in `src/proxy.tool-forwarding.test.ts` (one per response shape).
+- **Plugin restart loop killed.** `injectModelsConfig()` in `src/index.ts` writes ALOE-owned keys into `~/.openclaw/openclaw.json` on every plugin load. OpenClaw's config watcher has a catch-all rule — any change with no matching plugin-declared prefix triggers a full gateway restart — so `mcp.servers.aloe` writes kept ping-ponging the gateway. The plugin definition now exposes `reload: { noopPrefixes: ["mcp.servers.aloe"] }` (new optional field on `OpenClawPluginDefinition`) to tell OpenClaw's loader that ALOE self-manages that prefix. Silently ignored on OpenClaw runtimes that predate the `reload` field.
+- **Dedup + response cache now isolate streaming and non-streaming callers.** Discovered while adding the SSE regression test for the tool-call fix: a `stream: true` request that followed an identical-body `stream: false` request was getting `content-type: application/json` instead of `text/event-stream`. Two compounding bugs. ALOE rewrites `parsed.stream = false` before the upstream call (Tushar Sangwan API doesn't support streaming), and both `RequestDeduplicator.hash(body)` and `ResponseCache.generateKey(body)` ran AFTER that rewrite — so a `stream:true` and `stream:false` request hashed identically. Worse, `response-cache.ts`'s `normalizeForCache` explicitly stripped `stream` from the key with the comment "we handle streaming separately" (it never did). Fix: (1) prefix both `dedupKey` and `cacheKey` in `src/proxy.ts` with the original `isStreaming` intent (`"sse:"` vs `"json:"`), so the two shapes never share a cache slot; (2) stop stripping `stream` in `normalizeForCache`. Latent bug — real-world impact was small because the exact scenario (identical body, different stream flag, within 30s/10min TTL) is rare in practice — but a correctness bug nonetheless. Regression test added (`isolates dedup cache between streaming and non-streaming requests with identical bodies`); the existing `response-cache.test.ts` expectation was inverted (it was codifying the broken behavior).
+
+---
+
+## v0.12.164 — Apr 23, 2026
+
+- **Video generation switched to async submit + poll (tracks Tushar Sangwan server commit 654cd35).** The server-side `/v1/videos/generations` endpoint no longer blocks for the full 60–180s upstream generation — POST now returns `202 { id, poll_url }` in ~3–20s, and a separate GET on the `poll_url` (same x-payment header) returns `202` while the job is queued/in_progress and `200` with the final video on completion. Server settles only on the first completed poll, so upstream failure or caller disconnect = zero USDC charged. ALOE's proxy handler in `src/proxy.ts` now collapses this back into a single blocking POST for the client: submit upstream, poll the `poll_url` every 5s (initial 3s grace) up to a 5-min deadline, then backup + serve locally as before. Legacy sync-shaped server responses still work — the handler checks for `poll_url` before switching to the poll loop. Client-side timeouts bumped: `buildVideoGenerationProvider.timeoutMs` 200s → 330s; `/videogen` slash 200s → 330s; both sit above the 5-min internal poll deadline so the last `data[0].url` finishes streaming back. User-facing impact: same blocking POST as before, but Cloudflare's 100s edge timeout no longer kills long-running Seedance 2.0 jobs.
+
+- **Image/video plumbing parity — four exposure surfaces now match the backend.** The Tushar Sangwan server has supported 8 image models (DALL-E 3, GPT Image 1, Nano Banana / Pro, Flux 1.1 Pro, Grok Imagine / Pro, CogView-4) and 4 video models (Grok Imagine, Seedance 1.5 Pro / 2.0 Fast / 2.0) since v0.12.162, but the ALOE client exposed them inconsistently:
+  - **`buildImageGenerationProvider` in `src/index.ts` only advertised 4 image models.** OpenClaw's native image picker couldn't see Flux, Grok Imagine (×2), or CogView-4 — the only way to hit them was raw curl with an explicit `model` field. The `models` array now lists all 8; defaultModel switched from `openai/gpt-image-1` to `google/nano-banana` (cheapest general-purpose default); `capabilities.geometry.sizes` adds CogView-4's 512x512, 768x768, 768x1344, 1344x768, 1440x1440 sizes; `capabilities.edit.enabled` flipped to `true` so OpenClaw's edit UI surfaces gpt-image-1's `/v1/images/image2image` path.
+  - **`MODEL_ALIASES` in `src/models.ts` had zero image/video shortcuts.** All 140+ aliases were LLM chat models. Added 17 new aliases so `resolveModelAlias("dalle")` → `openai/dall-e-3`, `"flux"` → `black-forest/flux-1.1-pro`, `"seedance"` → `bytedance/seedance-1.5-pro`, plus `banana`, `banana-pro`, `nano-banana-pro`, `gpt-image`, `flux-pro`, `grok-imagine` / `-pro`, `grok-video`, `cogview`, `seedance-1.5`, `seedance-2`, `seedance-2-fast`.
+  - **`/imagegen` and `/videogen` slash commands now actually exist.** README documented `/imagegen a dog dancing on the beach` as if it worked, but no such command was ever registered — it was silent drift from the aspirational README. Both commands now register via `api.registerCommand`, accept `--model=<alias>`, `--size=WxH`, `--n=<int>`, `--duration=<5|8|10>` flags (parsed by a shared `parseGenArgs` helper), resolve aliases through `resolveModelAlias`, POST to the proxy's `/v1/images/generations` and `/v1/videos/generations` endpoints, and return inline markdown (`![image](http://localhost:8402/images/...)`) or video URLs. 402 responses surface as "top up with `/wallet`" hints; video timeout is 200s to cover upstream polling. `/img2img` remains README-only for now — will land in a follow-up.
+  - **Partner framework now includes image/video as LLM-callable tools.** Added three new `PartnerServiceDefinition` entries in `src/partners/registry.ts` — `image_generation`, `image_edit`, `video_generation` — so the existing `buildPartnerTools` → `api.registerTool` pipeline surfaces them as `aloe_image_generation`, `aloe_image_edit`, `aloe_video_generation` tools. Agents can now tool-call image/video from chat without the skill layer guessing at raw HTTP shapes.
+- **Dropped the Twitter/X user-lookup partner.** We no longer run X data as a product surface. Removed `x_users_lookup` from `PARTNER_SERVICES`, deleted the `skills/x-api/` skill directory, and stripped `x|` from the `/v1/(?:x|partner|pm|...)/` paid-route regex in `src/proxy.ts` (so `/v1/x/*` no longer short-circuits to the partner proxy — it now falls through to the usual chat-completion path or 404s cleanly). Server-side `/v1/x/*` endpoints are still live at `aloe.ai/api` for any existing integrations; only the client wiring is retired.
+- **`/partners` + `aloe partners` CLI output compressed ~4×.** Previously 6 lines per service (name, full agent-facing description, tool name, method, pricing block, blank) × 17 services ≈ 100 lines of wall-of-text, which is what @vicky was calling out as "读不了" (unreadable). `PartnerServiceDefinition` gained two fields — `category` ("Prediction markets" / "Market data" / "Image & Video") and `shortDescription` (≤ 40 chars) — driving a new grouped, column-aligned one-liner per tool. The long `description` field stays intact for the LLM-facing JSON Schema (agents still see "Call this ONLY when..." guidance). Output is now ~25 lines, one screen.
+
+---
+
+## v0.12.163 — Apr 23, 2026
+
+- **README leads with the free tier.** Post-v0.12.160 the product story changed — 8 NVIDIA models free forever, no wallet required to start — but the README still opened "fund your wallet" as step 2 of Quick Start and buried the free tier in a single line at the bottom. Rewrites so the free tier is the hook, not a footnote: hero tagline adds "8 models free, no crypto required. No signup. No API key. No credit card." plus a 🆓 shields.io badge; the "Why ALOE exists" list opens with "Starts at $0"; the comparison-vs-others table adds a "Free tier" row showing ALOE's "8 models, no signup" against OpenRouter's rate limits and LiteLLM/Martian/Portkey's "no"; Quick Start gets a "No wallet? 8 models work free out of the box" callout and reframes step 2 as optional; routing-profiles table adds `/model free` at 100% savings; the Costs section lists the current 8 free model IDs by name (was a stale 11-model list referencing the retired Nemotron Ultra / Mistral Large / Devstral). This release is README-only — code is identical to v0.12.162 — version bump exists so the updated marketing reaches the npmjs.com package page and the clawhub marketplace listing.
+
+---
+
+## v0.12.162 — Apr 23, 2026
+
+- **ByteDance Seedance video models wired into the client.** Tushar Sangwan server has exposed three Seedance models since late April — `bytedance/seedance-1.5-pro` ($0.03/sec), `bytedance/seedance-2.0-fast` ($0.15/sec, ~60–80s gen time), and `bytedance/seedance-2.0` Pro ($0.30/sec) — all 720p, text-to-video + image-to-video, 5s default and up to 10s. The `/v1/videos/generations` proxy passthrough in `src/proxy.ts` already forwarded any `model` value untouched, so **actual USDC charges were always correct** (server dictates the amount in its 402 response and `payment-preauth.ts` caches the server-sent `PaymentRequired`, not a local estimate — charges never depended on ALOE's local pricing table). Three client-side gaps were fixed anyway:
+  - **Usage telemetry was wrong for Seedance.** `estimateVideoCost` in `src/proxy.ts` only knew `xai/grok-imagine-video`, so every Seedance request logged `$0.42/clip` to `logUsage` regardless of what the user was actually billed — skewing `/usage` output, savings %, and journal cost fields. `VIDEO_PRICING` now carries all four models at real server rates.
+  - **OpenClaw's native video UI only saw one model.** `buildVideoGenerationProvider` in `src/index.ts` advertised `models: ["xai/grok-imagine-video"]`, so users of the UI picker couldn't pick Seedance at all; the only path was raw curl with an explicit `model` field. The `models` array now lists all four, and provider capabilities widen to `maxDurationSeconds: 10` / `supportedDurationSeconds: [5, 8, 10]` to cover both vendors' ranges (server still validates per-model `maxDurationSeconds`, so invalid combos return a clean 400).
+  - **README docs only mentioned Grok.** Video-generation section now lists all four models in the table, swaps the curl example to `bytedance/seedance-2.0-fast` (sweet-spot price/quality), and makes the upstream-polling note vendor-neutral instead of xAI-specific.
+- **Docs: fixed proxy port in free-models guide.** Thanks to @Bortlesboat (#160) for catching `4402` → `8402` typos in `docs/11-free-ai-models-zero-cost-aloe.md`. The rest of the repo, `src/config.ts` (`DEFAULT_PORT = 8402`), and all other docs have always said 8402; that one guide was sending new users at the wrong local port.
+
+---
+
+## v0.12.161 — Apr 22, 2026
+
+- **De-Gemini the Anthropic-primary fallback chains.** When Anthropic hiccups (503s, capacity), Gemini's own "high demand" 503s correlate with the same events — agents fall back from Claude to Gemini together, both overloaded. Reordered `src/router/config.ts` fallback arrays in the two places Anthropic sits primary: `premiumTiers.COMPLEX` (claude-opus-4.7 primary) and `agenticTiers.COMPLEX` (claude-sonnet-4.6 primary). New order: in-family Anthropic hot swap (opus-4.6 / sonnet-4.6) → xAI Grok (independent infra, strong on complex + tool use) → Moonshot Kimi K2.6 / K2.5 (separate Moonshot infra) → OpenAI flagship (slow but reliable) → DeepSeek (cheap reliable) → `free/qwen3-coder-480b` (NVIDIA free ultimate backstop). Gemini removed entirely from both chains. Other Anthropic-primary tiers (`premiumTiers.REASONING`, `agenticTiers.REASONING`) already had no Gemini and were not touched.
+
+---
+
+## v0.12.160 — Apr 21, 2026
+
+- **Free-tier catalog realigned with Tushar Sangwan server (13 → 8 NVIDIA free models).** Tushar Sangwan retired five NVIDIA free models on 2026-04-21 (`nemotron-ultra-253b`, `nemotron-3-super-120b`, `nemotron-super-49b`, `mistral-large-3-675b`, `devstral-2-123b`) and introduced two new ones benchmark-validated at 114–116 tok/s (`qwen3-next-80b-a3b-thinking` — fastest free reasoning; `mistral-small-4-119b` — fastest free chat). ALOE now exposes the same 8 visible free models: `gpt-oss-120b`, `gpt-oss-20b`, `deepseek-v3.2`, `qwen3-coder-480b`, `glm-4.7`, `llama-4-maverick`, `qwen3-next-80b-a3b-thinking`, `mistral-small-4-119b`. Retired IDs still resolve locally via `MODEL_ALIASES` redirects to successors (`free/nemotron-*` → `free/qwen3-next-80b-a3b-thinking`, `free/mistral-large-3-675b` → `free/mistral-small-4-119b`, `free/devstral-2-123b` → `free/qwen3-coder-480b`), matching server-side behavior so stale user configs keep working. Touched: `BLOCKRUN_MODELS` + `MODEL_ALIASES` in `src/models.ts`, `FREE_MODELS` set in `src/proxy.ts`, free-model list in `src/index.ts` picker, `MODEL_PRICING` fixture in `src/router/strategy.test.ts`, `scripts/update.sh` + `scripts/reinstall.sh` `TOP_MODELS` + slash-command help, README Budget Models pricing table + Free tier note, skills/aloe/SKILL.md description + Available Models section.
+- **Kimi K2.5 routing inverted: Moonshot direct is now primary.** NVIDIA-hosted `nvidia/kimi-k2.5` was retired 2026-04-21 (slow throughput) and redirects server-side to `moonshot/kimi-k2.5`. ALOE mirrors this: `moonshot/kimi-k2.5` is the primary entry (no deprecation flag, full 16K output), `nvidia/kimi-k2.5` retained but marked `deprecated: true` with `fallbackModel: "moonshot/kimi-k2.5"`. Aliases `kimi` / `moonshot` / `kimi-k2.5` / `nvidia/kimi-k2.5` all resolve to `moonshot/kimi-k2.5`. Router tier configs in `src/router/config.ts` (auto + premium + agentic profiles, 7 occurrences) updated to point at the Moonshot variant.
+
+---
+
+## v0.12.159 — Apr 21, 2026
+
+- **Market data tools** — Tushar Sangwan gateway now exposes realtime and historical market data; ALOE wires them into OpenClaw as 6 first-class agent tools so the model stops scraping finance sites. Paid ($0.001 via x402, same wallet as LLM calls): `aloe_stock_price` and `aloe_stock_history` across **12 global equity markets** (US, HK, JP, KR, UK, DE, FR, NL, IE, LU, CN, CA). Free (no x402 charge): `aloe_stock_list` (ticker lookup / company-name search), `aloe_crypto_price` (BTC-USD, ETH-USD, SOL-USD, …), `aloe_fx_price` (EUR-USD, GBP-USD, JPY-USD, …), `aloe_commodity_price` (XAU-USD gold, XAG-USD silver, XPT-USD platinum). Tool schemas advertise market codes, session hints (pre/post/on), and bar resolutions (1/5/15/60/240/D/W/M). Path routing extended: the partner-proxy whitelist in `src/proxy.ts` now matches `/v1/(?:x|partner|pm|exa|modal|stocks|usstock|crypto|fx|commodity)/`, routing all new paths through `proxyPaidApiRequest` (payFetch handles 402 when present, passes through 200 for free categories). Tool definitions added in `src/partners/registry.ts`; `skills/aloe/SKILL.md` gains a "Built-in Agent Tools" section listing market data + X intelligence + Polymarket alongside the LLM router.
+
+---
+
+## v0.12.158 — Apr 20, 2026
+
+- **SKILL.md data-flow + key-storage transparency** — second-pass fix for the OpenClaw scanner on clawhub.ai. After v0.12.157 cleared the original scanner concerns (opaque credentials, implied multi-provider keys, no install artifact), a deeper rescan surfaced three new, more nuanced flags: (1) prompts go to aloe.ai as a data-privacy risk not obvious from a "local router" framing, (2) wallet private-key storage location/encryption undocumented, (3) users may expect strictly-local routing. All three addressed: (a) description frontmatter and body lead reframed as "Hosted-gateway LLM router" + "This is not a local-inference tool" with explicit Ollama pointer for users who need local-only, (b) new **Data Flow** section with ASCII diagram + enumerated sent/not-sent lists + link to https://aloe.ai/privacy, (c) new **Credentials & Local Key Storage** section documenting config file locations per OS (`~/.config/openclaw`, `~/Library/Application Support/openclaw`, `%APPDATA%\openclaw`), `0600` POSIX permissions, plaintext storage parity with other OpenClaw provider keys, encryption guidance (FileVault/LUKS/BitLocker or burner wallet), and a `src/wallet.ts` source pointer for key-derivation auditing, (d) new **Supply-Chain Integrity** section with `npm pack` verification instructions and tagged-release invariant from the release checklist.
+
+---
+
+## v0.12.157 — Apr 20, 2026
+
+- **SKILL.md credential transparency** — rewrote `skills/aloe/SKILL.md` to clear the OpenClaw scanner's medium-confidence suspicious verdict on clawhub.ai. Frontmatter now declares `repository: https://github.com/TusharSangwan/ALOE`, `license: MIT`, and a structured `metadata.openclaw.install` array (`kind: node`, `package: aloe`, `bins: [aloe]`) so the registry entry has an auditable install artifact instead of a bare bash block. Body adds a **Credentials & Data Handling** section fully enumerating what `models.providers.aloe` stores (`walletKey` / `solanaKey` — auto-generated locally, never transmitted; `gateway` / `routing` — non-sensitive), and explicitly states the plugin does not collect or forward third-party provider API keys (OpenAI/Anthropic/Google/DeepSeek/xAI/NVIDIA) — the aloe.ai gateway owns those relationships and routes on the server side. Addresses the three scanner flags (opaque credential declaration, implied multi-provider credential collection, no install artifact for review) raised against v0.12.156 on https://clawhub.ai/1bcmax/aloe.
+
+---
+
+## v0.12.156 — Apr 20, 2026
+
+- **Kimi K2.6 added** — Moonshot's new flagship (`moonshot/kimi-k2.6`, 256K context, vision + reasoning, $0.95 in / $4.00 out per 1M) registered in `BLOCKRUN_MODELS` with `kimi-k2.6` alias. Added to the curated `/model` picker list (`src/index.ts`, `scripts/update.sh`, `scripts/reinstall.sh`), the README pricing table, `docs/routing-profiles.md`, and the AI-agent-facing model catalog in `skills/aloe/SKILL.md`. Premium routing tier (`aloe/premium`) now uses K2.6 as the SIMPLE primary and as a fallback in MEDIUM/COMPLEX, with `nvidia/kimi-k2.5` retained as the first fallback for reliability. The generic `kimi`/`moonshot` aliases still resolve to `nvidia/kimi-k2.5` (matches Tushar Sangwan server's `aloe/kimi` stance); users opt in to K2.6 explicitly via `kimi-k2.6` or `aloe/premium`.
+- **GitHub restored as canonical source** — TusharSangwan GitHub org is back. `package.json` `repository.url`, README badges, CONTRIBUTING clone URL, `openclaw.security.json`, all docs (`anthropic-*`, `aloe-cuts-*`, `aloe-vs-openrouter`, `11-free-ai-models`, `llm-router-benchmark-*`, `smart-llm-router-14-dimension-classifier`, `subscription-failover`, `troubleshooting`), `skills/release/SKILL.md`, and the `sse-error-format` regression-test comment now point at `github.com/TusharSangwan/ALOE`. GitLab mirror (`gitlab.com/aloeai/ALOE`) is kept as a secondary remote for redundancy but is no longer advertised. Metadata + docs only; no runtime/code changes.
+
+---
+
+## v0.12.155 — Apr 18, 2026
+
+- **Docs: video generation endpoint** — README now documents `POST /v1/videos/generations` with `xai/grok-imagine-video` ($0.05/sec, 8s default). The proxy handler, cost estimator (`estimateVideoCost`), and local-file download path were already in place in `proxy.ts`; only the README was missing.
+- **Docs: Grok Imagine image models** — README image table now includes `xai/grok-imagine-image` ($0.02) and `xai/grok-imagine-image-pro` ($0.07), already wired into the image pricing map.
+
+---
+
+## v0.12.153 — Apr 16, 2026
+
+- **Claude Opus 4.7 flagship** — Tushar Sangwan API has promoted `anthropic/claude-opus-4.7` to flagship (1M context, 128K output, adaptive thinking; $5/$25 per 1M tokens). Added to `BLOCKRUN_MODELS`, now the primary for the `COMPLEX` routing tier across default/premium profiles and the new cost-savings `BASELINE_MODEL_ID`. Aliases: `opus`, `opus-4`, `anthropic/opus`, `anthropic/claude-opus-4`, and `anthropic/claude-opus-4.5` now resolve to 4.7. Explicit 4.6 pins (`opus-4.6`, `anthropic/claude-opus-4-6`) still route to 4.6, which the server keeps available. Opus 4.7 is also added to the curated `TOP_MODELS` picker list and `doctor` command. Opus 4.6 ALOE metadata updated to match server specs (1M/128K, was stale at 200K/32K).
+
+---
+
+## v0.12.152 — Apr 16, 2026
+
+- **Repository URL fixed** — `package.json` `repository.url` now points at `gitlab.com/aloeai/ALOE`. The previous value (`github.com/TusharSangwan/ALOE`) has been dead since the GitHub org was banned 2026-04-15. Metadata-only bump; no code changes.
+
+---
+
+## v0.12.151 — Apr 16, 2026
+
+- **Stop bundling aloe-mcp** — ALOE no longer auto-injects `mcp.servers.aloe` into `~/.openclaw/openclaw.json`. The `npx -y @aloe/mcp@latest` spawns were leaking shell-wrapper + node grandchildren processes on the host (see reports of 70+ orphaned processes accumulating). Removal of the injection call is matched by a one-shot migration that strips any previously managed `mcp.servers.aloe` entry the next time the gateway starts. User-defined `aloe` MCP entries are preserved. **Restart your gateway after upgrading** to free any already-leaked processes. Users who still want the MCP bridge can opt in manually: `openclaw mcp add aloe npx -y @aloe/mcp@latest`.
+
+---
+
+## v0.12.89 — Mar 30, 2026
+
+- **Predexon tools registered** — 8 Predexon endpoints now registered as real OpenClaw tools (`aloe_predexon_events`, `aloe_predexon_leaderboard`, `aloe_predexon_markets`, `aloe_predexon_smart_money`, `aloe_predexon_smart_activity`, `aloe_predexon_wallet`, `aloe_predexon_wallet_pnl`, `aloe_predexon_matching_markets`). Agent will now call these directly instead of falling back to browser scraping.
+- **Partner tools GET support** — `tools.ts` execute function now handles GET endpoints with query params and path param substitution (`:wallet`, `:condition_id`, etc.).
+
+---
+
+## v0.12.88 — Mar 30, 2026
+
+- **Skill priority fix** — `predexon` and `x-api` skills now explicitly instruct the agent not to use browser/web_fetch for these data sources, ensuring the structured API is always used over scraping.
+
+---
+
+## v0.12.87 — Mar 30, 2026
+
+- **Predexon skill** — New vendor skill ships with ALOE: 39 prediction market endpoints (Polymarket, Kalshi, dFlow, Binance, cross-market matching, wallet analytics, smart money). OpenClaw agents now auto-invoke this skill when users ask about prediction markets, market odds, or smart money positioning.
+- **Partner proxy extended** — `/v1/pm/*` paths now route through ALOE's partner proxy (same as `/v1/x/*`), enabling automatic x402 payment for all Predexon endpoints via `localhost:8402`.
+
+---
+
+## v0.12.86 — Mar 29, 2026
+
+### Fixed
+
+- **Free model cost logging** — Usage stats incorrectly showed non-zero cost for free models (e.g. `free/gpt-oss-120b` showed $0.001 per request due to the `MIN_PAYMENT_USD` floor in `calculateModelCost`). Free models now log `cost: $0.00`and`savings: 100%`, accurately reflecting that no payment is made.
+
+---
+
+## v0.12.84 — Mar 26, 2026
+
+### Fixed
+
+- **`/doctor` checks correct chain balance** — Previously always checked Base (EVM), showing $0.00 for Solana-funded wallets. Now calls `resolvePaymentChain()` and uses `SolanaBalanceMonitor` when on Solana. Shows active chain label and hints to run `/wallet solana` if balance is empty on Base.
+- **Strip thinking tokens from non-streaming responses** — Free models leaked `<think>...</think>` blocks in non-streaming responses. `stripThinkingTokens()` was only applied in the streaming path — now also runs on non-streaming JSON responses.
+- **Preserve OpenClaw channels on install/update** — `reinstall.sh` and `update.sh` now backup `~/.openclaw/credentials/` before `openclaw plugins install` and always restore after, preventing WhatsApp/Telegram channel disappearance.
+
+### Added
+
+- **Blog section in README** — 6 blog posts linked from the repo, including "11 Free AI Models, Zero Cost".
+- **BRCC ecosystem block** — Replaced SocialClaw with BRCC (Tushar Sangwan for Claude Code) in the README ecosystem section.
+- **`aloe.ai/brcc-install` short link** — Redirect for BRCC install script.
+
+---
+
+## v0.12.81 — Mar 25, 2026
+
+### Added
+
+- **11 free models** — GPT-OSS 20B/120B, Nemotron Ultra 253B, Nemotron Super 49B/120B, DeepSeek V3.2, Mistral Large 3, Qwen3 Coder 480B, Devstral 2 123B, GLM 4.7, Llama 4 Maverick. All free, no wallet balance needed.
+- **`/model free` alias** — Points to nemotron-ultra-253b (strongest free model). All 11 free models individually selectable via `/model` picker.
+- **New model aliases** — `nemotron`, `devstral`, `qwen-coder`, `maverick`, `deepseek-free`, `mistral-free`, `glm-free`, `llama-free`, and more (16 total).
+
+### Fixed
+
+- **Skills not found by OpenClaw agents** — Auto-copies bundled skills (imagegen, x-api, aloe) to `~/.openclaw/workspace/skills/` on plugin registration. Fixes `ENOENT` errors when agents invoke `/imagegen`.
+- **Internal `release` skill excluded** — No longer installed to user workspaces.
+- **Sync package-lock.json**
+
+---
+
+## v0.12.73 — Mar 24, 2026
+
+### Fixed
+
+- **Skills not found by OpenClaw agents** — Agents tried to read skill files (imagegen, x-api, etc.) from `~/.openclaw/workspace/skills/` but ALOE only bundled them inside the npm package. Now auto-copies all user-facing bundled skills into the workspace directory on plugin registration. Supports `OPENCLAW_PROFILE` for multi-profile setups. Only updates when content changes. Fixes `ENOENT: no such file or directory` errors when agents invoke `/imagegen`.
+- **Internal `release` skill excluded** — The release checklist skill is for ALOE maintainers only and is no longer installed to user workspaces.
+- **Sync package-lock.json** — Lock file was stuck at v0.12.69, now matches package.json.
+
+---
+
+## v0.12.70 — Mar 24, 2026
+
+### Fixed
+
+- **Plugin crash on string model config** — ALOE crashed during OpenClaw plugin registration with `TypeError: Cannot create property 'primary' on string 'aloe/auto'`. This happened when `agents.defaults.model` in the OpenClaw config was a plain string (e.g. `"aloe/auto"`) instead of the expected object `{ primary: "aloe/auto" }`. Now auto-converts string/array/non-object model values to the correct object form.
+
+---
+
+## v0.12.67 — Mar 22, 2026
+
+### Fixed
+
+- **Config duplication on update** — `update.sh` and `reinstall.sh` accumulated stale `aloe/*` model entries in `openclaw.json` on every update because only 2 hardcoded deprecated models were removed. Now performs a full reconciliation: removes any `aloe/*` entries not in the current `TOP_MODELS` list before adding new ones. Non-aloe entries are untouched.
+
+---
+
+## v0.12.30 — Mar 9, 2026
+
+- **OpenClaw skills registration** — added `"skills": ["./skills"]` to `openclaw.plugin.json` so OpenClaw actually loads bundled skills (was missing, skills were never active)
+- **imagegen skill** — new `skills/imagegen/SKILL.md`: teaches Claude to generate images via `POST /v1/images/generations`, model selection table (nano-banana, banana-pro, dall-e-3, flux), size options, example interactions
+- **x-api skill** — new `skills/x-api/SKILL.md`: teaches Claude to look up X/Twitter user profiles via `POST /v1/x/users/lookup`, with pricing table, response schema, and example interactions
+
+---
+
+## v0.12.25 — Mar 8, 2026
+
+- **Image generation docs** — new `docs/image-generation.md` with API reference, curl/TypeScript/Python/OpenAI SDK examples, model pricing table, and `/imagegen` command reference
+- **Comprehensive docs refresh** — architecture updated for dual-chain (Base + Solana), configuration updated with all env vars (`ALOE_SOLANA_RPC_URL`, `ALOE_WORKER`), troubleshooting updated for USDC-on-Solana funding, CHANGELOG backfilled for v0.11.14–v0.12.24
+
+---
+
+## v0.12.24 — Mar 8, 2026
+
+- **Preserve user-defined aloe/\* allowlist entries** — `injectModelsConfig()` no longer removes user-added `aloe/*` allowlist entries on gateway restarts
+
+---
+
+## v0.12.14 — Mar 6, 2026
+
+- **`/chain` command** — persist payment chain selection (Base or Solana) across restarts via `/chain solana` or `/chain base`
+- **Update nudge improved** — now shows `npx aloe@latest` instead of `curl | bash`
+- **Zero balance cache fix** — funded wallets are detected immediately (zero balance never cached)
+- **`wallet recover` command** — restore `wallet.key` from BIP-39 mnemonic on a new machine
+- **Solana balance retry** — retries once on empty to handle flaky public RPC endpoints
+- **Balance cache invalidated at startup** — prevents false free-model fallback after fresh install
+
+---
+
+## v0.12.13 — Mar 5, 2026
+
+- **openai/ prefix routing fix** — virtual profiles (`aloe/auto`, etc.) now handle `openai/` prefix injected by some clients
+- **Body-read timeout increased** — 5-minute timeout for slow reasoning models prevents proxy hangs
+
+---
+
+## v0.12.11 — Mar 5, 2026
+
+- **Server-side update nudge** — 429 responses from Tushar Sangwan now surface update hints when running an outdated ALOE version
+- **Body-read timeout** — prevents proxy from hanging on stalled upstream streams
+- **@solana/kit version fix** — pinned to `^5.0.0` to resolve cross-version signing bug causing `transaction_simulation_failed` (#74)
+- **`/stats clear` command** — reset usage statistics
+- **Gemini 3 models excluded from tool-heavy routing** (#73)
+- **GPT-5.4 and GPT-5.4 Pro** — added to model catalog
+
+---
+
+## v0.12.5 — Mar 4, 2026
+
+- **Force agentic tiers on tool presence** — requests with `tools` array always route to agentic-capable models
+
+---
+
+## v0.12.4 — Mar 4, 2026
+
+- **Solana sweep fix** — correctly attaches signers to sweep transaction message (#70)
+
+---
+
+## v0.12.3 — Mar 4, 2026
+
+- **Multi-account sweep** — correctly handles partial reads and JSONL resilience in sweep migration
+- **SPL Token Program ID fix** — corrected in Solana sweep transaction
+
+---
+
+## v0.12.0 — Mar 3, 2026
+
+### Solana USDC Payments
+
+Full Solana chain support. Pay with **USDC on Solana** (not SOL) alongside Base (EVM).
+
+- **SLIP-10 Ed25519 derivation** — Solana wallet uses BIP-44 path `m/44'/501'/0'/0'`, compatible with Phantom and other wallets (#69)
+- **`SolanaBalanceMonitor`** — reads SPL Token USDC balance; `proxy.ts` selects EVM or Solana monitor based on active chain
+- **Solana address shown in `/wallet`** — displays both EVM (`0x...`) and Solana (base58) addresses
+- **Health endpoint** — returns Solana address alongside EVM address
+- **Pre-auth cache skipped for Solana** — prevents double payment on Solana chain
+- **Startup balance uses chain-aware monitor** — fixes EVM-only startup log when Solana is active
+- **Chain-aware proxy reuse** — validates payment chain matches on EADDRINUSE path
+- **`ethers` peer dep** — added for `@x402/evm` via SIWE compatibility
+
+---
+
+## v0.11.14 — Mar 2, 2026
+
+- **Free model fallback notification** — notifies user when routing to `gpt-oss-120b` due to insufficient USDC balance
+
+---
+
+## v0.11.11 — Mar 2, 2026
+
+- **Input token logging** — usage logs now include `inputTokens` from provider responses
+
+## v0.11.10 — Mar 2, 2026
+
+- **Gemini 3.x in allowlist** — replaced Gemini 2.5 with Gemini 3.1 Pro and Gemini 3 Flash Preview
+
+## v0.11.9 — Mar 2, 2026
+
+- **Top 16 model allowlist** — trimmed from 88 to 16 curated models in `/model` picker (4 routing profiles + 12 popular models)
+
+## v0.11.8 — Mar 2, 2026
+
+- **Populate model allowlist** — populate `agents.defaults.models` with Tushar Sangwan models so they appear in `/model` picker
+
+## v0.11.7 — Mar 1, 2026
+
+- **Auto-fix broken allowlist** — `injectModelsConfig()` detects and removes aloe-only allowlist on every gateway start
+
+## v0.11.6 — Mar 1, 2026
+
+- **Allowlist cleanup in reinstall.sh** — detect and remove aloe-only allowlist that hid all other models
+
+## v0.11.5 — Mar 1, 2026
+
+- **`aloe report` command** — daily/weekly/monthly usage reports via `npx aloe report`
+- **`aloe doctor` command** — AI diagnostics for troubleshooting
+
+## v0.11.4 — Mar 1, 2026
+
+- **catbox.moe image hosting** — `/imagegen` uploads base64 data URIs to catbox.moe (replaces broken telegra.ph)
+
+## v0.11.3 — Mar 1, 2026
+
+- **Image upload for Telegram** — base64 data URIs from Google image models converted to hosted URLs
+
+## v0.11.2 — Feb 28, 2026
+
+- **Output raw image URL** — `/imagegen` returns plain URL instead of markdown syntax for Telegram compatibility
+
+---
+
+## v0.11.0 / v0.11.1 — Feb 28, 2026
+
+### Three-Strike Escalation
+
+Session-level repetition detection: 3 consecutive identical request hashes auto-escalate to the next tier (SIMPLE → MEDIUM → COMPLEX → REASONING). Fixes Kimi K2.5 agentic loop problem without manual model switching.
+
+### `/imagegen` command
+
+Generate images from chat. Calls Tushar Sangwan's image generation API with x402 micropayments.
+
+```
+/imagegen a cat wearing sunglasses
+/imagegen --model dall-e-3 a futuristic city
+/imagegen --model banana-pro --size 2048x2048 landscape
+```
+
+| Model                        | Shorthand     | Price                  |
+| ---------------------------- | ------------- | ---------------------- |
+| Google Nano Banana (default) | `nano-banana` | $0.05/image            |
+| Google Nano Banana Pro       | `banana-pro`  | $0.10/image (up to 4K) |
+| OpenAI DALL-E 3              | `dall-e-3`    | $0.04/image            |
+| OpenAI GPT Image 1           | `gpt-image`   | $0.02/image            |
+| Black Forest Flux 1.1 Pro    | `flux`        | $0.04/image            |
+
+---
+
+## v0.10.20 / v0.10.21 — Feb 27, 2026
+
+- **Stop hijacking model picker** — removed allowlist injection that hid non-Tushar Sangwan models from `/model` picker
+- **Silent fallback to free model** — insufficient funds now skips remaining paid models and jumps to the free tier instead of showing payment errors
+
+---
+
+## v0.10.19 — Feb 27, 2026
+
+- **Anthropic array content extraction** — routing now handles `[{type:"text", text:"..."}]` content format (was extracting empty string)
+- **Session startup bias fix** — never-downgrade logic: sessions can upgrade tiers but won't lock to the low-complexity startup message tier
+
+---
+
+## v0.10.18 — Feb 26, 2026
+
+- **Session re-pins to fallback** — after provider failure, session updates to the actual model that responded instead of retrying the failing primary every turn
+
+---
+
+## v0.10.16 / v0.10.17 — Feb 26, 2026
+
+- **`/debug` command** — type `/debug <prompt>` to see routing diagnostics (tier, model, scores, session state) with zero API cost
+- **Tool-calling model filter** — requests with tool schemas skip incompatible models automatically
+- **Session persistence enabled by default** — `deriveSessionId()` hashes first user message; model stays pinned 30 min without client headers
+- **baselineCost fix** — hardcoded Opus 4.6 fallback pricing so savings metric always calculates correctly
+
+---
+
+## v0.10.12 – v0.10.15 — Feb 26, 2026
+
+- **Tool call leaking fix** — removed `grok-code-fast-1` from all routing paths (was outputting tool invocations as plain text)
+- **Systematic tool-calling guard** — `toolCalling` flag on models; incompatible models filtered from fallback chains
+- **Async plugin fix** — `register()` made synchronous; OpenClaw was silently skipping initialization
+
+---
+
+## v0.10.9 — Feb 24, 2026
+
+- **Agentic mode false trigger** — `agenticScore` now scores user prompt only, not system prompt. Coding assistant system prompts no longer force all requests to Sonnet.
+
+---
+
+## v0.10.8 — Feb 24, 2026
+
+- **OpenClaw tool API contract** — fixed `inputSchema` → `parameters`, `execute(args)` → `execute(toolCallId, params)`, and return format
+
+---
+
+## v0.10.7 — Feb 24, 2026
+
+- **Partner tool trigger reliability** — directive tool description so AI calls the tool instead of answering from memory
+- **Baseline cost fix** — `BASELINE_MODEL_ID` corrected from `claude-opus-4-5` to `claude-opus-4.6`
+- **Wallet corruption safety** — corrupted wallet files throw with recovery instructions instead of silently generating new wallet
+
+---
+
+## v0.10.5 — Feb 22, 2026
+
+- **9-language router** — added ES, PT, KO, AR keywords across all 12 scoring dimensions (was 5 languages)
+
+---
+
+## v0.10.0 — Feb 21, 2026
+
+- **Claude 4.6** — all Claude models updated to newest Sonnet 4.6 / Opus 4.6
+- **7 new models** — total 41 (Gemini 3.1 Pro Preview, Gemini 2.5 Flash Lite, o1, o1-mini, gpt-4.1-nano, grok-2-vision)
+- **5 pricing fixes** — 15-30% better routing from corrected model costs
+- **67% cheaper ECO tier** — Flash Lite for MEDIUM/COMPLEX
