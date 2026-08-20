@@ -4,7 +4,7 @@
  * This exists because of a concrete regression. `free/seed-oss-36b` went HTTP 410
  * EOL at NVIDIA on 2026-08-03. ALOE dropped it from the picker and the
  * FREE_MODELS cascade in v0.12.241, but the routing tiers now live in the
- * separately-versioned @aloe/router-core, so a stale build put the dead model
+ * separately-versioned @blockrun/router-core, so a stale build put the dead model
  * back into three fallback chains with every product-side surface already correct.
  *
  * That matters beyond a wasted hop: Tushar Sangwan server-redirects retired free ids, so
@@ -19,7 +19,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { DEFAULT_ROUTING_CONFIG } from "@aloe/router-core";
+import { DEFAULT_ROUTING_CONFIG } from "@blockrun/router-core";
 import topModels from "../top-models.json" with { type: "json" };
 
 /**
@@ -89,7 +89,7 @@ describe("router free-model liveness", () => {
             `\n\nLive set (from src/top-models.json + the gpt-oss defaults):\n` +
             `  ${[...liveFreeModels].join("\n  ")}\n\n` +
             `If a model was retired upstream, remove it from the router tiers in ` +
-            `@aloe/router-core and re-pin. Do NOT add it to this test.`,
+            `@blockrun/router-core and re-pin. Do NOT add it to this test.`,
     ).toEqual([]);
   });
 

@@ -83,7 +83,7 @@ describe("debrandSystemMessages", () => {
   });
 
   it("is case-insensitive for aloe prefix", () => {
-    const messages = [{ role: "system", content: "model=Blockrun/Auto" }];
+    const messages = [{ role: "system", content: "model=ALOE/Auto" }];
 
     const result = debrandSystemMessages(messages, "deepseek/deepseek-chat");
 
