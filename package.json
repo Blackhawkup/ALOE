@@ -89,7 +89,7 @@
     "@polymarket/builder-signing-sdk": "0.0.8",
     "@polymarket/clob-client-v2": "1.0.8",
     "@scure/bip32": "^2.0.1",
-    "@scure/bip39": "^1.5.0",
+    "@scure/bip39": "^2.3.0",
     "@solana/kit": "^5.0.0",
     "@x402/core": "^2.9.0",
     "@x402/evm": "^2.9.0",
