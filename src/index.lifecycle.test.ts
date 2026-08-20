@@ -44,9 +44,9 @@ describe("plugin lifecycle", () => {
   });
 
   it("clears deferred proxy startup state during deactivate", async () => {
-    vi.useFakeTimers();
-
     const { default: plugin } = await import("./index.js");
+      vi.useFakeTimers();
+    vi.useFakeTimers();
     const proc = process as NodeJS.Process & {
       __aloeProxyStarted?: boolean;
       __aloeDeferredStartTimer?: ReturnType<typeof setTimeout>;
@@ -94,7 +94,7 @@ describe("plugin lifecycle", () => {
       });
 
     vi.doMock("./proxy.js", () => ({
-      getProxyPort: () => 8402,
+      getProxyPort: () => Math.floor(Math.random() * 10000) + 20000,
       startProxy,
     }));
     vi.doMock("./auth.js", () => ({
@@ -174,6 +174,7 @@ describe("plugin lifecycle", () => {
 
     try {
       const { default: plugin } = await import("./index.js");
+      vi.useFakeTimers();
       const emptyApi = createApi({});
       const configuredRouting = {
         tiers: {
@@ -227,7 +228,7 @@ describe("plugin lifecycle", () => {
       });
 
     vi.doMock("./proxy.js", () => ({
-      getProxyPort: () => 8402,
+      getProxyPort: () => Math.floor(Math.random() * 10000) + 20000,
       startProxy,
     }));
     vi.doMock("./auth.js", () => ({
@@ -307,6 +308,7 @@ describe("plugin lifecycle", () => {
 
     try {
       const { default: plugin } = await import("./index.js");
+      vi.useFakeTimers();
       const emptyApi = createApi({});
       const configuredRouting = {
         tiers: {
@@ -366,7 +368,7 @@ describe("plugin lifecycle", () => {
       });
 
     vi.doMock("./proxy.js", () => ({
-      getProxyPort: () => 8402,
+      getProxyPort: () => Math.floor(Math.random() * 10000) + 20000,
       startProxy,
     }));
     vi.doMock("./auth.js", () => ({
@@ -446,6 +448,7 @@ describe("plugin lifecycle", () => {
 
     try {
       const { default: plugin } = await import("./index.js");
+      vi.useFakeTimers();
       const emptyApi = createApi({});
       const configuredRoutingA = {
         tiers: {
@@ -501,7 +504,7 @@ describe("plugin lifecycle", () => {
 
   it("strips managed aloe MCP server from api.config on register and does not re-inject", async () => {
     vi.doMock("./proxy.js", () => ({
-      getProxyPort: () => 8402,
+      getProxyPort: () => (Math.floor(Math.random() * 10000) + 20000),
       startProxy: vi.fn(),
     }));
     vi.doMock("./auth.js", () => ({
@@ -550,6 +553,7 @@ describe("plugin lifecycle", () => {
     vi.doMock("./mcp-config.js", async () => await vi.importActual("./mcp-config.js"));
 
     const { default: plugin } = await import("./index.js");
+      vi.useFakeTimers();
 
     const api = {
       id: "test",
@@ -602,7 +606,7 @@ describe("plugin lifecycle", () => {
     }) => void;
 
     vi.doMock("./proxy.js", () => ({
-      getProxyPort: () => 8402,
+      getProxyPort: () => (Math.floor(Math.random() * 10000) + 20000),
       startProxy: vi.fn(
         () =>
           new Promise((resolve) => {
@@ -662,6 +666,7 @@ describe("plugin lifecycle", () => {
 
     try {
       const { default: plugin } = await import("./index.js");
+      vi.useFakeTimers();
       const api = {
         id: "test",
         name: "test",
@@ -708,3 +713,4 @@ describe("plugin lifecycle", () => {
     }
   });
 });
+
